@@ -285,6 +285,7 @@ thead th.th-sort.active .sort-arrow{opacity:1}
     <div class="section" id="sec-reportes"><div class="ph"><h2>Reportes</h2><p>Informes y exportaciones</p></div><div id="rContent"></div></div>
     <div class="section" id="sec-configuracion"><div class="ph"><h2>Configuración</h2><p>Usuarios, áreas y parámetros</p></div><div id="cfContent"></div></div>
     <div class="section" id="sec-gastos"><div class="ph"><h2>Revisión de Gastos</h2><p>Comprobantes importados — solicitá revisión si detectás un dato incorrecto</p></div><div id="gContent"></div></div>
+    <div class="section" id="sec-charlie"><div class="ph"><h2>Charlie IA</h2><p>Tu asesor de presupuesto</p></div><div id="chContent"></div></div>
   </main>
 </div>
 
@@ -513,6 +514,8 @@ const NAV = [
    icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>'},
   {id:'gastos',        label:'Revisión de Gastos',  roles:['gerencia','responsable'],
    icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>'},
+  {id:'charlie',       label:'Charlie IA',          roles:['admin','gerencia','responsable'],
+   icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>'},
 ];
 
 // ── STATE ──────────────────────────────────────────
@@ -660,20 +663,20 @@ function renderSyncPill(){
 }
 
 // ── NAVIGATION ────────────────────────────────────
-const SLABELS={dashboard:'Dashboard',presupuestos:'Presupuestos',importar:'Importar Datos',control:'Control Presupuestario',reportes:'Reportes',configuracion:'Configuración',gastos:'Revisión de Gastos'};
+const SLABELS={dashboard:'Dashboard',presupuestos:'Presupuestos',importar:'Importar Datos',control:'Control Presupuestario',reportes:'Reportes',configuracion:'Configuración',gastos:'Revisión de Gastos',charlie:'Charlie IA'};
 function navigate(id){
   const allowed=CU.role==='admin'
-    ?['dashboard','presupuestos','importar','control','reportes','configuracion']
+    ?['dashboard','presupuestos','importar','control','reportes','configuracion','charlie']
     :CU.role==='gerencia'
-    ?['dashboard','presupuestos','control','reportes','gastos']
-    :['dashboard','presupuestos','gastos'];
+    ?['dashboard','presupuestos','control','reportes','gastos','charlie']
+    :['dashboard','presupuestos','gastos','charlie'];
   if(!allowed.includes(id)){id='dashboard';}
   CS=id;
   $('tbTitle').innerHTML=SLABELS[id]+'<span class="tb-subtitle" id="tbSub"></span>';
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.id==='ni-'+id));
   document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
   const s=$('sec-'+id);if(s)s.classList.add('active');
-  ({dashboard:renderDash,presupuestos:renderPres,importar:renderImportar,control:renderControl,reportes:renderReportes,configuracion:renderConfig,gastos:renderGastos}[id]||function(){})();
+  ({dashboard:renderDash,presupuestos:renderPres,importar:renderImportar,control:renderControl,reportes:renderReportes,configuracion:renderConfig,gastos:renderGastos,charlie:renderCharlie}[id]||function(){})();
 }
 
 // ── GAUGE ─────────────────────────────────────────
@@ -2078,6 +2081,151 @@ function closeModal(){$('modalOv').style.display='none';}
 
 // ── BOOT ──────────────────────────────────────────
 init();
+
+// ── CHARLIE IA ────────────────────────────────────
+var CF_PLAN=[
+  {area:'Dirección',                budget:28000000,  estado:'Activo'},
+  {area:'Administración y Finanzas',budget:21000000,  estado:'Activo'},
+  {area:'RRHH',                     budget:38500000,  estado:'Activo',  real:true},
+  {area:'Operaciones',              budget:82000000,  estado:'Activo'},
+  {area:'Compras',                  budget:35000000,  estado:'Borrador'},
+  {area:'Logística',                budget:46000000,  estado:'Borrador'},
+  {area:'Producción',               budget:120000000, estado:'Activo'},
+  {area:'Marketing',                budget:45000000,  estado:'Activo',  real:true}
+];
+function cfPlan(area){return CF_PLAN.find(function(p){return p.area===area;});}
+var CF_MES=['ene','feb','mar','abr','may','jun'];
+var CF_REAL_AREAS=['RRHH','Marketing'];
+function cfEjecReal(area,mesK){
+  var per=mesK+'/26';
+  return (typeof GDATA!=='undefined'?GDATA:[]).filter(function(g){return g.area===area && g.per===per;}).reduce(function(s,g){return s+(g.monto||0);},0);
+}
+var CF_SIMF={
+  'Dirección':[.42,.50,.55,.58,.60,.55],'Administración y Finanzas':[.70,.78,.82,.80,.85,.80],
+  'Operaciones':[.55,.60,.64,.66,.68,.63],'Compras':[.30,.35,.40,.45,.48,.41],
+  'Logística':[.48,.52,.55,.58,.60,.58],'Producción':[.60,.64,.66,.68,.70,.66]
+};
+function cfEjec(area,mesK){
+  if(CF_REAL_AREAS.indexOf(area)>=0){var r=cfEjecReal(area,mesK); if(r>0) return r;}
+  var pl=cfPlan(area); if(!pl) return 0;
+  var f=(CF_SIMF[area]||[.6,.6,.6,.6,.6,.6])[CF_MES.indexOf(mesK)]||0.6;
+  return Math.round(pl.budget/12*f);
+}
+function cfEjecYTD(area){return CF_MES.reduce(function(s,m){return s+cfEjec(area,m);},0);}
+function cfBudYTD(area){var pl=cfPlan(area);return pl?Math.round(pl.budget/12*CF_MES.length):0;}
+function cfM(v){if(v==null)return '—';var a=Math.abs(v);if(a>=1e9)return '$'+(v/1e9).toFixed(2)+'B';if(a>=1e6)return '$'+(v/1e6).toFixed(1)+'M';if(a>=1e3)return '$'+Math.round(v/1e3)+'k';return '$'+Math.round(v);}
+var CF_SIMCAT={
+  'Producción':[['Materia Prima',9200000],['Mantenimiento',2600000],['Insumos Operativos',1800000],['Servicios',1100000]],
+  'Operaciones':[['Soporte a franquicias',5400000],['Logística interna',2100000],['Tecnología',1500000],['Varios',900000]],
+  'Administración y Finanzas':[['Honorarios',3100000],['Servicios',1700000],['Impuestos y tasas',1400000],['Software',700000]],
+  'Dirección':[['Honorarios',2200000],['Viáticos',900000],['Varios',600000]],
+  'Compras':[['Insumos varios',2400000],['Fletes',1200000],['Software',500000]],
+  'Logística':[['Fletes',3800000],['Mantenimiento',1400000],['Combustible',1100000]]
+};
+function cfCatArea(area){
+  if(typeof GDATA!=='undefined'){
+    var byc={}; GDATA.filter(function(g){return g.area===area && g.per && g.per.slice(4)==='26';}).forEach(function(g){byc[g.cat]=(byc[g.cat]||0)+g.monto;});
+    var ent=Object.entries(byc).sort(function(a,b){return b[1]-a[1];});
+    if(ent.length) return ent.slice(0,5);
+  }
+  return (CF_SIMCAT[area]||[['Gasto general',1000000]]).slice(0,5);
+}
+function cfPartidas(area){
+  var cats=cfCatArea(area);
+  return cats.map(function(e){var spent=e[1];var budget=Math.max(Math.round(spent*2.2/1000)*1000, spent+200000);return {cat:e[0],spent:spent,budget:budget,disp:budget-spent};});
+}
+function cfUserArea(){ if(!CU)return 'Operaciones'; var ex=CF_PLAN.find(function(p){return p.area===CU.area;}); return ex?CU.area:'Operaciones'; }
+function cfRole(){ return CU.role==='admin'?'admin':CU.role==='gerencia'?'gerencia':'responsable'; }
+function cfAreasRiesgo(){return CF_PLAN.filter(function(p){var proy=cfEjecYTD(p.area)/CF_MES.length*12;return pct(proy,p.budget)>90;});}
+function cfPendientes(){try{return JSON.parse(localStorage.getItem('b_ajustes')||'[]').filter(function(a){return !a.resuelto;});}catch(e){return[];}}
+function cfBorradores(){return (typeof PRES!=='undefined'?PRES:[]).filter(function(p){return p.estado==='Borrador';});}
+function cfBriefing(){
+  var r=cfRole();
+  if(r==='responsable'){
+    var a=cfUserArea(),parts=cfPartidas(a),bud=parts.reduce(function(s,p){return s+p.budget;},0),sp=parts.reduce(function(s,p){return s+p.spent;},0);
+    var queda=bud-sp,pp=pct(sp,bud||1),proy=pct(sp/CF_MES.length*12,bud||1);
+    var est=proy<=80?'vas con buen margen':proy<=100?'vas justo, prestá atención':'⚠️ a este ritmo te pasás';
+    var mayor=parts.slice().sort(function(x,y){return y.spent-x.spent;})[0]||{cat:'—'};
+    return 'Esto es lo importante de tu área hoy:<br>• Llevás usado el <strong>'+pp+'%</strong> de tu presupuesto y '+est+'.<br>• Te quedan <strong>'+$c(queda)+'</strong> para el resto del año.<br>• Tu mayor gasto es <strong>'+mayor.cat+'</strong>.<br>¿Querés que profundice en algo?';
+  }
+  if(r==='admin'){
+    var pend=cfPendientes().length,borr=cfBorradores();
+    return 'Tu tablero de control administrativo:<br>• <strong>'+pend+'</strong> solicitud'+(pend!==1?'es':'')+' de revisión pendiente'+(pend!==1?'s':'')+'.<br>• <strong>'+borr.length+'</strong> presupuesto'+(borr.length!==1?'s':'')+' sin aprobar'+(borr.length?' ('+borr.map(function(b){return b.area;}).join(', ')+')':'')+'.<br>• Detecté <strong>7 comprobantes</strong> con posible imputación incorrecta.<br>¿Por dónde empezamos?';
+  }
+  var totB=CF_PLAN.reduce(function(s,p){return s+p.budget;},0),totE=CF_PLAN.reduce(function(s,p){return s+cfEjecYTD(p.area);},0);
+  var pg=pct(totE,CF_PLAN.reduce(function(s,p){return s+cfBudYTD(p.area);},0)||1);
+  var ries=cfAreasRiesgo();
+  return 'La foto de la empresa hoy:<br>• Ejecución global del período: <strong>'+pg+'%</strong> ('+cfM(totE)+' de '+cfM(totB)+' anual).<br>• Áreas en riesgo de pasarse: <strong>'+(ries.length?ries.map(function(p){return p.area;}).join(', '):'ninguna')+'</strong>.<br>• '+cfBorradores().length+' presupuesto(s) esperando tu aprobación.<br>¿Qué querés analizar o decidir?';
+}
+var CF_QA={
+  responsable:[
+    {q:'¿En qué gasté más este año?',a:function(){var a=cfUserArea();var p=cfPartidas(a).slice().sort(function(x,y){return y.spent-x.spent;});var t=p.reduce(function(s,x){return s+x.spent;},0);return 'Tus 3 mayores gastos:<br>'+p.slice(0,3).map(function(x,i){return (i+1)+'. <strong>'+x.cat+'</strong>: '+$c(x.spent)+' ('+pct(x.spent,t)+'%)';}).join('<br>');}},
+    {q:'¿Me alcanza hasta fin de año?',a:function(){var a=cfUserArea();var parts=cfPartidas(a);var bud=parts.reduce(function(s,p){return s+p.budget;},0);var sp=parts.reduce(function(s,p){return s+p.spent;},0);var proy=pct(sp/CF_MES.length*12,bud||1);return proy<=100?('Sí. A tu ritmo terminarías el año en el <strong>'+proy+'%</strong>. '+(proy<=80?'Margen de sobra.':'Algo justo, pero llegás.')):('Ojo: proyectás <strong>'+proy+'%</strong>, te pasarías. Conviene frenar gastos no esenciales o pedir ampliación.');}},
+    {q:'¿Puedo gastar $X? (probá con un monto)',a:'Escribime el monto, por ejemplo "puedo gastar 200000", y te digo si entra y si necesitás autorización. 🟢🟡🔴'},
+    {q:'¿Qué partida me conviene reasignar?',a:function(){var a=cfUserArea();var parts=cfPartidas(a).slice().sort(function(x,y){return (x.spent/x.budget)-(y.spent/y.budget);});var m=parts[0];return m?('La que menos usás es <strong>'+m.cat+'</strong>: '+pct(m.spent,m.budget)+'% usado, te quedan '+$c(m.disp)+'. Si no la vas a necesitar, podés pedir reasignarla.'):'Sin datos suficientes aún.';}}
+  ],
+  admin:[
+    {q:'¿Qué gastos están mal clasificados?',a:'Detecté <strong>7 comprobantes</strong> dudosos. Top 3:<br>• <strong>$1,2M "Insumos varios"</strong> en Operaciones que es de Marketing.<br>• <strong>$480K "Servicios"</strong> en Adm. = fee de PedidosYa (a prorratear).<br>• <strong>2 comprobantes</strong> sin categoría.<br>¿Preparo las correcciones?'},
+    {q:'¿Qué solicitudes tengo pendientes?',a:function(){var p=cfPendientes();return p.length?('Tenés <strong>'+p.length+'</strong> sin resolver:<br>'+p.slice(0,5).map(function(x){return '• '+(x.egr||'comprobante')+' — '+(x.motivo||'revisión')+' (de '+(x.by||'—')+')';}).join('<br>')):'Sin solicitudes pendientes. Todo al día. ✅';}},
+    {q:'¿Qué presupuestos faltan aprobar?',a:function(){var b=cfBorradores();return b.length?('Quedan <strong>'+b.length+'</strong> en Borrador: '+b.map(function(x){return x.area+' ('+cfM(x.monto)+')';}).join(', ')+'.'):'Todos aprobados. ✅';}},
+    {q:'¿Cómo viene la conciliación del mes?',a:'De mayo quedan <strong>2 áreas sin cerrar</strong> (Operaciones y Compras) y 4 subsidios de promos sin cargar. El resto, conciliado. ¿Te listo lo pendiente?'}
+  ],
+  gerencia:[
+    {q:'¿Qué áreas se van a pasar del presupuesto?',a:function(){var r=cfAreasRiesgo();return r.length?('En riesgo: '+r.map(function(p){var proy=pct(cfEjecYTD(p.area)/CF_MES.length*12,p.budget);return '<strong>'+p.area+'</strong> (~'+proy+'%)';}).join(', ')+'. El resto, dentro de lo esperado.'):'Ninguna proyecta excederse hoy. ✅';}},
+    {q:'¿Cómo viene la eficiencia del gasto?',a:'El gasto interno de las 8 áreas pesa hoy ~<strong>2,3%</strong> de la facturación. La meta para 2027 es que <strong>baje</strong> aunque crezcamos: la estructura escala sin inflarse. Producción y Operaciones son las de mayor peso.'},
+    {q:'Si crecemos 40% en 2027, ¿cómo queda el presupuesto?',a:'Si el gasto creciera igual que la facturación (+40%), las 8 áreas pasarían de ~$415M a ~$580M. Manteniendo disciplina, áreas como Adm., Dirección y Marketing deberían crecer <strong>menos</strong> que la facturación. Te armo el escenario partida por partida.'},
+    {q:'¿Qué tengo para aprobar?',a:function(){var b=cfBorradores();return b.length?('Tenés <strong>'+b.length+'</strong> esperando aprobación: '+b.map(function(x){return x.area+' ('+cfM(x.monto)+')';}).join(', ')+'. Los aprobás en Autonomía y Aprobaciones.'):'Nada pendiente de aprobación. ✅';}}
+  ]
+};
+function renderCharlie(){
+  var qa=CF_QA[cfRole()]||CF_QA.responsable;
+  var sug=qa.map(function(it,i){return '<button class="cf-sug" onclick="cfAsk('+i+')">'+it.q+'</button>';}).join('');
+  var rolTxt=cfRole()==='responsable'?'tu asesor de presupuesto':cfRole()==='admin'?'tu copiloto administrativo':'tu copiloto de gestión';
+  $('chContent').innerHTML=''+
+  '<style>.cf-wrap{display:grid;grid-template-columns:1fr 300px;gap:16px}@media(max-width:900px){.cf-wrap{grid-template-columns:1fr}}'+
+  '.cf-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;display:flex;flex-direction:column;height:560px;overflow:hidden}'+
+  '.cf-head{padding:14px 18px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px}'+
+  '.cf-ava{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#33A392,#1D4856);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px}'+
+  '.cf-body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#F5F5F5}'+
+  '.cf-msg{max-width:90%;padding:11px 14px;border-radius:12px;font-size:13px;line-height:1.6}'+
+  '.cf-u{align-self:flex-end;background:#1D4856;color:#fff;border-bottom-right-radius:3px}'+
+  '.cf-b{align-self:flex-start;background:#fff;border:1px solid #e5e7eb;color:#221F1F;border-bottom-left-radius:3px}'+
+  '.cf-in{padding:12px 16px;border-top:1px solid #eee;display:flex;gap:8px}'+
+  '.cf-in input{flex:1;border:1px solid #e5e7eb;border-radius:9px;padding:10px 12px;font-size:13px;outline:none}'+
+  '.cf-in button{background:#F58232;color:#fff;border:none;border-radius:9px;padding:0 16px;font-weight:700;cursor:pointer}'+
+  '.cf-sug{display:block;width:100%;text-align:left;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:11px 13px;font-size:12.5px;color:#475569;cursor:pointer;margin-bottom:9px;line-height:1.4}'+
+  '.cf-sug:hover{background:#e9f6f3;border-color:#33A392;color:#1D4856}'+
+  '.cf-note{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px}.cf-note h5{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#999;margin:0 0 7px}.cf-note p{font-size:12px;color:#64748b;margin:0;line-height:1.55}'+
+  '</style>'+
+  '<div class="cf-wrap"><div class="cf-card">'+
+    '<div class="cf-head"><div class="cf-ava">🤖</div><div><strong style="font-size:14px">Charlie</strong><div style="font-size:11px;color:#33A392">● '+rolTxt+' · '+CU.rlabel+'</div></div></div>'+
+    '<div class="cf-body" id="cfBody"></div>'+
+    '<div class="cf-in"><input id="cfInput" placeholder="Preguntale a Charlie… (ej: puedo gastar 200000)" onkeydown="if(event.key===\'Enter\')cfSend()"><button onclick="cfSend()">Enviar</button></div>'+
+  '</div><div><div class="cf-note" style="margin-bottom:12px"><h5>Podés preguntarle</h5>'+sug+'</div>'+
+  '<div class="cf-note"><h5>Qué hace Charlie</h5><p>Analiza tus datos, detecta desvíos antes de que pasen y propone acciones. Cada rol ve solo su información.</p></div></div></div>';
+  setTimeout(function(){cfMsg('cf-b','¡Hola '+CU.name.split(' ')[0]+'! 👋 '+cfBriefing());},150);
+}
+function cfMsg(cls,html){var b=$('cfBody');if(!b)return;var d=document.createElement('div');d.className='cf-msg '+cls;d.innerHTML=html;b.appendChild(d);b.scrollTop=b.scrollHeight;}
+function cfResolve(a){return typeof a==='function'?a():a;}
+function cfAsk(i){var qa=(CF_QA[cfRole()]||CF_QA.responsable)[i];if(!qa)return;cfMsg('cf-u',qa.q);setTimeout(function(){cfMsg('cf-b',cfResolve(qa.a));},450);}
+function cfSimTexto(monto){
+  var area=cfUserArea(),parts=cfPartidas(area),queda=parts.reduce(function(s,p){return s+p.disp;},0);
+  if(monto>queda)return '🔴 No entra: $'+monto.toLocaleString('es-AR')+' supera lo que te queda ('+$c(queda)+'). Habría que pedir más presupuesto.';
+  if(monto>800000)return '🔴 Está en presupuesto, pero al superar $800.000 necesita <strong>aprobación de Dirección</strong>.';
+  if(monto>150000)return '🟡 Sí, podés. Entre $150k y $800k se autoriza pero queda registrado y se avisa. Te quedarían '+$c(queda-monto)+'.';
+  return '🟢 Sí, gastalo sin pedir permiso. Te quedarían '+$c(queda-monto)+'.';
+}
+function cfSend(){
+  var inp=$('cfInput');var t=(inp.value||'').trim();if(!t)return;cfMsg('cf-u',t);inp.value='';
+  var low=t.toLowerCase();
+  if(cfRole()==='responsable' && /gast|puedo|alcanza/.test(low)){
+    var num=parseFloat((t.replace(/[.\s]/g,'').match(/\d+/)||[])[0]);
+    if(num&&num>0){setTimeout(function(){cfMsg('cf-b',cfSimTexto(num));},450);return;}
+  }
+  var qa=CF_QA[cfRole()]||CF_QA.responsable;
+  var m=qa.find(function(x){return x.q.toLowerCase().slice(0,14).split(' ').some(function(w){return w.length>3&&low.indexOf(w)>=0;});});
+  setTimeout(function(){cfMsg('cf-b',m?cfResolve(m.a):'Puedo analizar tu presupuesto, detectar desvíos y proponerte acciones. Probá una pregunta sugerida → o pedime un análisis puntual.');},450);
+}
 </script>
 </body>
 </html>
