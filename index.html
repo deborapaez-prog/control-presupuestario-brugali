@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Brugali SAS • Control Presupuestario</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1D4856;--primary-dark:#164059;--primary-light:#e8f1f4;
+  --sidebar-bg:#1D4856;--sidebar-border:rgba(255,255,255,.10);
+  --sidebar-text:rgba(255,255,255,.65);--sidebar-active-bg:rgba(51,163,146,.20);--sidebar-active-text:#fff;
+  --bg:#F5F5F5;--card:#fff;--border:#E0E0E0;
+  --text:#221F1F;--muted:#999999;--label:#444444;
+  --success:#33A392;--success-bg:#eaf5f3;--success-b:#b0d9d5;
+  --warning:#E3A127;--warning-bg:#fdf6e3;--warning-b:#f0d090;
+  --danger:#EF402F;--danger-bg:#fef1f0;--danger-b:#fdb8b2;
+  --info:#06b6d4;--info-bg:#ecfeff;--info-b:#a5f3fc;
+  --r:12px;--r-sm:8px;--r-lg:16px;
+  --sh:0 2px 8px rgba(0,0,0,.07);--sh-md:0 4px 16px rgba(0,0,0,.1);--sh-lg:0 8px 32px rgba(0,0,0,.14);
+  --sw:248px;--th:62px;
+  --font:'Nunito',system-ui,-apple-system,sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+
+/* LOGIN */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d2b37 0%,#1D4856 50%,#2a6278 100%)}
+.lc{background:var(--card);border-radius:var(--r-lg);padding:40px;width:100%;max-width:400px;box-shadow:var(--sh-lg)}
+.lc-logo{text-align:center;margin-bottom:28px}
+.logo-mark{width:42px;height:68px;background:none;display:inline-flex;align-items:center;justify-content:center}
+.lc-logo h1{font-size:20px;font-weight:700;margin-top:12px}
+.lc-logo p{font-size:13px;color:var(--muted);margin-top:3px}
+.fg{margin-bottom:18px}
+.fg label{display:block;font-size:13px;font-weight:600;color:var(--label);margin-bottom:6px}
+.input{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:14px;color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s;background:var(--card)}
+.input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(29,72,86,.15)}
+select.input{cursor:pointer}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:var(--card);color:var(--text);border:1.5px solid var(--border)}.btn-secondary:hover{background:var(--bg)}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}.btn-ghost:hover{background:var(--bg);color:var(--text)}
+.btn-success{background:#16a34a;color:#fff}.btn-success:hover{background:#15803d}
+.btn-sm{padding:7px 13px;font-size:13px}
+.btn-full{width:100%;justify-content:center}
+.btn-icon{padding:7px;border-radius:var(--r-sm);background:transparent;border:1.5px solid var(--border);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s}
+.btn-icon:hover{background:var(--bg);color:var(--text)}
+.err-msg{color:var(--danger);font-size:12px;margin-top:5px;display:none}
+.err-msg.show{display:block}
+
+/* APP */
+#appScreen{display:none}
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sw);background:var(--sidebar-bg);display:flex;flex-direction:column;z-index:100;overflow-y:auto}
+.sb-logo{padding:20px 18px 16px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--sidebar-border)}
+.sb-logo-mark{width:26px;height:40px;background:none;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-logo-text h2{color:#fff;font-size:14px;font-weight:700;line-height:1.2}
+.sb-logo-text p{color:var(--sidebar-text);font-size:11px;margin-top:1px;opacity:.8}
+.sb-nav{padding:10px 0;flex:1}
+.nav-grp-label{padding:14px 18px 5px;font-size:10px;font-weight:700;color:rgba(136,146,176,.5);text-transform:uppercase;letter-spacing:.08em}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;color:var(--sidebar-text);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border-left:3px solid transparent;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#c8cfe8}
+.nav-item.active{background:var(--sidebar-active-bg);color:var(--sidebar-active-text);border-left-color:#33A392;font-weight:600}
+.nav-item svg{flex-shrink:0;opacity:.7}
+.nav-item.active svg,.nav-item:hover svg{opacity:1}
+.sb-user{padding:14px 18px;border-top:1px solid var(--sidebar-border)}
+.sb-user-row{display:flex;align-items:center;gap:10px}
+.avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.sb-user-name{color:#fff;font-size:13px;font-weight:600;line-height:1.2}
+.sb-user-area{color:var(--sidebar-text);font-size:11px;opacity:.7}
+.sb-logout{margin-top:8px;width:100%;padding:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--r-sm);color:var(--sidebar-text);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
+.sb-logout:hover{background:rgba(255,255,255,.12);color:#fff}
+
+/* TOPBAR */
+#topbar{position:fixed;left:var(--sw);right:0;top:0;height:var(--th);background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;z-index:90;box-shadow:var(--sh)}
+.tb-title{font-size:15px;font-weight:700;color:var(--text);flex:1}
+.tb-subtitle{font-size:12px;color:var(--muted);font-weight:400}
+.tb-date{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.tb-user{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:var(--r-sm);border:1px solid var(--border)}
+.tb-user-name{font-size:13px;font-weight:600;color:var(--text)}
+.tb-user-role{font-size:11px;color:var(--muted)}
+.sync-pill{display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:20px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--muted)}
+.sync-dot.done{background:var(--success)}
+.sync-dot.syncing{background:var(--warning);animation:pulse 1s infinite}
+.sync-dot.error{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* MAIN */
+#main{margin-left:var(--sw);margin-top:var(--th);padding:26px;min-height:calc(100vh - var(--th))}
+.section{display:none}.section.active{display:block}
+.ph{margin-bottom:22px}
+.ph h2{font-size:21px;font-weight:800;color:var(--text)}
+.ph p{font-size:13px;color:var(--muted);margin-top:3px}
+
+/* CARD */
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--sh)}
+.card-hd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-hd h3{font-size:14px;font-weight:700}
+.card-bd{padding:20px}
+
+/* TABS */
+.tabs{display:flex;gap:0;border:1.5px solid var(--border);border-radius:var(--r-sm);overflow:hidden;width:fit-content;margin-bottom:18px}
+.tab{padding:8px 22px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);background:var(--card);transition:all .15s;border-right:1px solid var(--border)}
+.tab:last-child{border-right:none}
+.tab.active{background:var(--primary);color:#fff}
+
+/* FILTER BAR */
+.fbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.fbar-label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+/* GAUGE + METRIC GRID */
+.dash-grid{display:grid;grid-template-columns:auto 1fr;gap:20px;margin-bottom:20px}
+.gauge-card{background:var(--sidebar-bg);border-radius:var(--r);padding:30px 48px 24px;color:#fff;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:18px}
+.gauge-card h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--sidebar-text);margin-bottom:16px;opacity:.8}
+.gauge-legend{display:flex;gap:12px;margin-top:12px;font-size:11px;color:var(--sidebar-text)}
+.gauge-legend span{display:flex;align-items:center;gap:4px}
+.gdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.metric-card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:20px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.metric-card.c-blue::before{background:var(--primary)}
+.metric-card.c-green::before{background:var(--success)}
+.metric-card.c-orange::before{background:var(--warning)}
+.metric-card.c-purple::before{background:#7c3aed}
+.mc-icon{font-size:22px;margin-bottom:8px}
+.mc-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.mc-value{font-size:24px;font-weight:800;color:var(--text);margin:5px 0 2px;line-height:1.1}
+.mc-pct{font-size:13px;font-weight:700;margin-bottom:3px}
+.mc-sub{font-size:11.5px;color:var(--muted)}
+
+/* TABLE */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;padding:9px 14px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border);white-space:nowrap}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#f8fafc}
+.tfoot-row{padding:11px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
+thead th.th-sort{cursor:pointer;user-select:none;transition:background .12s,color .12s}
+thead th.th-sort:hover{background:var(--primary-light);color:var(--primary)}
+thead th.th-sort .sort-arrow{font-size:10px;opacity:.35;margin-left:4px;display:inline-block;transition:opacity .12s}
+thead th.th-sort.active{color:var(--primary)}
+thead th.th-sort.active .sort-arrow{opacity:1}
+#pvSelect:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(29,72,86,.15)}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.bg-green{background:var(--success-bg);color:#16a34a;border:1px solid var(--success-b)}
+.bg-red{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-b)}
+.bg-yellow{background:var(--warning-bg);color:#b45309;border:1px solid var(--warning-b)}
+.bg-orange{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+.bg-blue{background:var(--primary-light);color:var(--primary);border:1px solid #c7d2fe}
+.bg-gray{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.bg-purple{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}
+.bg-cyan{background:var(--info-bg);color:#0891b2;border:1px solid var(--info-b)}
+.bg-review{background:#fdf4ff;color:#7e22ce;border:1px solid #e9d5ff}
+
+/* PROGRESS */
+.pbar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
+.pbar .fill{height:100%;border-radius:3px;transition:width .3s}
+
+/* MODAL */
+.mo{position:fixed;inset:0;background:rgba(10,14,40,.55);backdrop-filter:blur(2px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--sh-lg);width:100%;max-width:700px;max-height:90vh;overflow-y:auto;animation:mi .16s ease}
+@keyframes mi{from{opacity:0;transform:scale(.95) translateY(-8px)}to{opacity:1;transform:none}}
+.mh{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mh h3{font-size:15px;font-weight:700}
+.mc{padding:22px}.mf{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.mx{width:28px;height:28px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted)}.mx:hover{background:var(--bg)}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid.cols1{grid-template-columns:1fr}
+
+/* SYNC / IMPORT */
+.sync-card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:22px;margin-bottom:18px}
+.sync-hd{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px}
+.sync-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.smetrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.sm{background:var(--bg);border-radius:var(--r-sm);padding:12px;text-align:center}
+.sm .n{font-size:20px;font-weight:800;color:var(--text)}
+.sm .l{font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px}
+.val-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--r-sm);margin-bottom:5px;font-size:12.5px}
+.val-item.ok{background:var(--success-bg);border:1px solid var(--success-b);color:#16a34a}
+.val-item.warn{background:var(--warning-bg);border:1px solid var(--warning-b);color:#b45309}
+.val-item.err{background:var(--danger-bg);border:1px solid var(--danger-b);color:var(--danger)}
+
+/* EMPTY */
+.empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty svg{opacity:.25;margin-bottom:10px}
+.empty p{font-size:14px}
+
+/* ALERT */
+.alert{padding:11px 14px;border-radius:var(--r-sm);font-size:13px;margin-bottom:14px;display:flex;align-items:flex-start;gap:8px}
+.alert-info{background:var(--info-bg);border:1px solid var(--info-b);color:#0891b2}
+
+/* AREA DOT */
+.adot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+
+/* DISTRIBUTION BUTTONS */
+.dist-btns{display:flex;gap:0;border:1.5px solid var(--border);border-radius:var(--r-sm);overflow:hidden;margin-bottom:10px;margin-top:8px}
+.dist-btn{flex:1;padding:9px 12px;font-size:13px;font-weight:600;cursor:pointer;background:var(--card);color:var(--muted);border:none;border-right:1px solid var(--border);transition:all .15s}
+.dist-btn:last-child{border-right:none}
+.dist-btn.active{background:var(--primary);color:#fff}
+.dist-note{font-size:12px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.month-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;min-width:0}
+.month-grid .fg{margin-bottom:0}
+.month-grid .fg label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.input-pref{display:flex;align-items:center;border:1.5px solid var(--border);border-radius:var(--r-sm);overflow:hidden;transition:border-color .15s,box-shadow .15s}
+.input-pref:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(29,72,86,.12)}
+.input-pref span{padding:0 8px;font-size:13px;color:var(--muted);background:var(--bg);border-right:1px solid var(--border);height:100%;display:flex;align-items:center;white-space:nowrap}
+.input-pref input{flex:1;border:none;outline:none;padding:8px 10px;font-size:13px;color:var(--text);background:var(--card);min-width:0}
+.input-pref input[readonly]{background:var(--bg);color:var(--muted)}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px;margin-top:18px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.modal .mc{max-height:65vh;overflow-y:auto}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="lc">
+    <div class="lc-logo">
+      <div class="logo-mark"><svg viewBox="-4 -2 56 96" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:42px;height:68px"><rect x="-2" y="9" width="32" height="16" rx="8" fill="#1D4856" transform="rotate(-45 14 17)"/><rect x="18" y="23" width="32" height="16" rx="8" fill="#33A392" transform="rotate(-45 34 31)"/><rect x="-2" y="37" width="32" height="16" rx="8" fill="#E3A127" transform="rotate(-45 14 45)"/><rect x="18" y="51" width="32" height="16" rx="8" fill="#F58232" transform="rotate(-45 34 59)"/><rect x="-2" y="65" width="32" height="16" rx="8" fill="#EF402F" transform="rotate(-45 14 73)"/></svg></div>
+      <h1>Brugali SAS</h1>
+      <p>Control Presupuestario</p>
+    </div>
+    <div class="fg">
+      <label>Correo electrónico</label>
+      <input type="email" class="input" id="loginUser" placeholder="usuario@brugali.com.ar" autocomplete="email"/>
+      <div class="err-msg" id="loginUserErr" style="display:none">No encontramos un usuario con ese correo.</div>
+    </div>
+    <div class="fg">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <label style="margin-bottom:0">Contraseña</label>
+        <button type="button" onclick="doForgotPw()" style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:600;cursor:pointer;padding:0;font-family:var(--font)">¿Olvidaste tu contraseña?</button>
+      </div>
+      <div style="position:relative">
+        <input type="password" class="input" id="loginPass" placeholder="Ingresá tu contraseña" style="padding-right:42px"/>
+        <button type="button" onclick="toggleLoginPw()" id="eyeBtn" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;display:flex;align-items:center" title="Mostrar/ocultar contraseña">
+          <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="err-msg" id="loginErr">Contraseña incorrecta. Intentá de nuevo.</div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--label);cursor:pointer">
+        <input type="checkbox" id="rememberMe" style="width:15px;height:15px;accent-color:var(--primary);cursor:pointer"/>
+        Recordar mi usuario
+      </label>
+      <button type="button" onclick="doRecordarUsuario()" style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:600;cursor:pointer;padding:0;font-family:var(--font)">¿No recordás tu usuario?</button>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Ingresar</button>
+    <div id="loginFeedback" style="margin-top:14px;font-size:12.5px;text-align:center;display:none"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+  <aside id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-mark"><svg viewBox="-4 -2 56 96" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:26px;height:40px"><rect x="-2" y="9" width="32" height="16" rx="8" fill="#1D4856" transform="rotate(-45 14 17)"/><rect x="18" y="23" width="32" height="16" rx="8" fill="#33A392" transform="rotate(-45 34 31)"/><rect x="-2" y="37" width="32" height="16" rx="8" fill="#E3A127" transform="rotate(-45 14 45)"/><rect x="18" y="51" width="32" height="16" rx="8" fill="#F58232" transform="rotate(-45 34 59)"/><rect x="-2" y="65" width="32" height="16" rx="8" fill="#EF402F" transform="rotate(-45 14 73)"/></svg></div>
+      <div class="sb-logo-text"><h2>Brugali SAS</h2><p>Control Presupuestario</p></div>
+    </div>
+    <nav class="sb-nav" id="sbNav"></nav>
+    <div class="sb-user" id="sbUser"></div>
+  </aside>
+
+  <div id="topbar">
+    <div class="tb-title" id="tbTitle">Dashboard <span class="tb-subtitle" id="tbSub"></span></div>
+    <div class="sync-pill" id="syncPill"><div class="sync-dot" id="syncDot"></div><span id="syncTxt">Sin sincronizar</span></div>
+    <button class="btn btn-sm btn-ghost" onclick="doSync()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+      Actualizar ahora
+    </button>
+    <div class="tb-date" id="tbDate"></div>
+    <div class="tb-user" id="tbUser"></div>
+  </div>
+
+  <main id="main">
+    <div class="section" id="sec-dashboard"><div class="ph"><h2>Dashboard</h2><p>Resumen ejecutivo del sistema presupuestario</p></div><div id="dContent"></div></div>
+    <div class="section" id="sec-presupuestos"><div class="ph"><h2>Presupuestos</h2><p>Gestión de presupuestos por área y período</p></div><div id="pContent"></div></div>
+    <div class="section" id="sec-importar"><div class="ph"><h2>Importar Datos</h2><p>Capital Humano y Marketing — sincronización desde Google Sheets</p></div><div id="iContent"></div></div>
+    <div class="section" id="sec-control"><div class="ph"><h2>Control Presupuestario</h2><p>Comparativo presupuesto vs. gasto real</p></div><div id="cContent"></div></div>
+    <div class="section" id="sec-reportes"><div class="ph"><h2>Reportes</h2><p>Informes y exportaciones</p></div><div id="rContent"></div></div>
+    <div class="section" id="sec-configuracion"><div class="ph"><h2>Configuración</h2><p>Usuarios, áreas y parámetros</p></div><div id="cfContent"></div></div>
+    <div class="section" id="sec-gastos"><div class="ph"><h2>Revisión de Gastos</h2><p>Comprobantes importados — solicitá revisión si detectás un dato incorrecto</p></div><div id="gContent"></div></div>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="mo" id="modalOv" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBox">
+    <div class="mh"><h3 id="mTitle"></h3><button class="mx" onclick="closeModal()">✕</button></div>
+    <div class="mc" id="mBody"></div>
+    <div class="mf" id="mFoot"></div>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────
+const SHEET_ID    = '1OpIzu2KOL-WCsKYCqQW2RifTfMC6nX7UqIPwUiF2uP8';
+const SHEET_HOJAS = ['egresos de fondos','compras por concepto','compras por articulo'];
+// Filtros server-side por hoja: solo trae filas de RRHH y Marketing
+const SHEET_TQ = {
+  // egresos de fondos:
+  //   col I = "Gastos de capital humano" / "Gastos de marketing" (Clasificacion 1)
+  //   col H = periodo devengamiento en formato "ene/25"
+  //   col Q = subcategoría (Motivación, Honorarios, etc.)
+  'egresos de fondos':
+    "SELECT A,B,D,E,H,I,Q " +
+    "WHERE I MATCHES '.*[Cc]apital.*' OR I MATCHES '.*[Mm]arketing.*' " +
+    "LABEL A 'comprobante',B 'fecha',D 'descripcion',E 'importe'," +
+    "H 'periodo devengamiento',I 'clasificacion 1',Q 'clasificacion para presupuesto'",
+  'compras por concepto': "SELECT * WHERE AA MATCHES '.*[Cc]apital.*' OR AA MATCHES '.*[Mm]arketing.*'",
+  'compras por articulo': "SELECT * WHERE K MATCHES '.*[Cc]apital.*' OR K MATCHES '.*[Mm]arketing.*'",
+};
+
+const USERS = [
+  {id:1,name:'Agostina Nagalli',init:'AN',email:'administracion@brugali.com.ar',role:'admin',      rlabel:'Administrador',area:'Administración y Finanzas',pw:'brugali123'},
+  {id:2,name:'Melania Turelli', init:'MT',email:'mtureli@brugali.com.ar',       role:'gerencia',   rlabel:'Director',    area:'Dirección',               pw:'brugali123'},
+  {id:3,name:'Débora Páez',     init:'DP',email:'debora.paez@brugali.com.ar',   role:'responsable',rlabel:'Líder',       area:'Producción',              pw:'brugali123'},
+  {id:4,name:'Agustín',         init:'AG',email:'agustin@brugali.com.ar',       role:'responsable',rlabel:'Líder',       area:'RRHH',                    pw:'brugali123'},
+  {id:5,name:'Horacio',         init:'HO',email:'marketing@brugali.com.ar',     role:'responsable',rlabel:'Líder',       area:'Marketing',               pw:'brugali123'},
+];
+const AREAS = [
+  {id:1,name:'Dirección',               code:'CC-DIR',color:'#6366f1'},
+  {id:2,name:'Administración y Finanzas',code:'CC-ADM',color:'#2563eb'},
+  {id:3,name:'RRHH',                    code:'CC-RRH',color:'#16a34a'},
+  {id:4,name:'Operaciones',             code:'CC-OPS',color:'#d97706'},
+  {id:5,name:'Compras',                 code:'CC-COM',color:'#dc2626'},
+  {id:6,name:'Logística',               code:'CC-LOG',color:'#0891b2'},
+  {id:7,name:'Producción',              code:'CC-PRO',color:'#7c3aed'},
+  {id:8,name:'Marketing',               code:'CC-MKT',color:'#ec4899'},
+];
+const CATEGORIAS = [
+  // Capital Humano
+  'Motivación','Comida','Capacitaciones','Gs. Ingreso Personal','Insumos varios','Reclutamiento','Seguridad e Higiene','Soft de gestion','Uniformes','Varios',
+  // Marketing
+  'Plataforma y sistema de marketing','Anuncios y Publicidad Digital','Honorarios','Viáticos','Producción y contenido','Gastos varios',
+];
+const PERIODOS   = ['ene/25','feb/25','mar/25','abr/25','may/25','jun/25','jul/25','ago/25','sep/25','oct/25','nov/25','dic/25','ene/26','feb/26','mar/26','abr/26','may/26','jun/26'];
+const MESES      = [{k:'ene',l:'Enero'},{k:'feb',l:'Febrero'},{k:'mar',l:'Marzo'},{k:'abr',l:'Abril'},{k:'may',l:'Mayo'},{k:'jun',l:'Junio'},{k:'jul',l:'Julio'},{k:'ago',l:'Agosto'},{k:'sep',l:'Septiembre'},{k:'oct',l:'Octubre'},{k:'nov',l:'Noviembre'},{k:'dic',l:'Diciembre'}];
+const MES_PER    = {ene:'ene',feb:'feb',mar:'mar',abr:'abr',may:'may',jun:'jun',jul:'jul',ago:'ago',sep:'sep',oct:'oct',nov:'nov',dic:'dic'};
+const ANIOS      = [2024,2025,2026,2027,2028];
+const TIPOS_PRES = ['Incremental','Zero-Based','Histórico','Ajuste por inflación'];
+const ESTADOS_PRES=['Borrador','Activo','Cerrado','Suspendido'];
+// Preset estacional: % by quarter
+const DIST_ESTACIONAL = {ene:6,feb:6,mar:8,abr:8,may:9,jun:9,jul:9,ago:9,sep:9,oct:9,nov:9,dic:9};
+
+const SHEET_RAW = [
+  // ── CAPITAL HUMANO ────────────────────────────────
+  // ene/25
+  {egr:'EGR 9998-00001888/X',fecha:'2025-01-17',desc:'Almuerzo pizzas y empanadas',monto:48420,per:'ene/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00001910/X',fecha:'2025-01-24',desc:'COMPRA DE FRUTAS',monto:5000,per:'ene/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00001928/X',fecha:'2025-01-30',desc:'Almuerzo Luis- Sabado 25/01',monto:11700,per:'ene/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'FAC 0003-00000459/A',fecha:'2025-01-22',desc:'RICORDI NORBERTO ANDRES',monto:220000,per:'ene/25',cat:'Motivación',area:'RRHH',hoja:'compras por concepto',ok:true},
+  // feb/25
+  {egr:'EGR 9998-00001945/X',fecha:'2025-02-04',desc:'Almuerzo 04/02- 7 Menus',monto:36000,per:'feb/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00001947/X',fecha:'2025-02-05',desc:'Almuerzos 05/02- 6 menus',monto:31000,per:'feb/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'FAC 0312-00000293/A',fecha:'2025-02-10',desc:'Concepto: [009] SERVICIO DE COMIDA PERSONAL',monto:206738.99,per:'feb/25',cat:'Comida',area:'RRHH',hoja:'compras por concepto',ok:true},
+  // mar/25
+  {egr:'EGR 9998-00002019/X',fecha:'2025-03-03',desc:'Almuerzo lunes 03/03',monto:34000,per:'mar/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'FAC 0003-27032025/A',fecha:'2025-03-27',desc:'Concepto: [009] SERVICIO DE COMIDA PERSONAL',monto:26800,per:'mar/25',cat:'Comida',area:'RRHH',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 1741-00003027/A',fecha:'2025-03-25',desc:'Concepto: [009] SERVICIO DE COMIDA PERSONAL',monto:315670.33,per:'mar/25',cat:'Comida',area:'RRHH',hoja:'compras por concepto',ok:true},
+  // abr/25
+  {egr:'EGR 9998-00002130/X',fecha:'2025-04-01',desc:'Almuerzo martes 01/04',monto:48000,per:'abr/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'FAC 0001-00031428/A',fecha:'2025-04-23',desc:'Concepto: [052] GASTOS DE CAPITAL HUMANO',monto:170443.93,per:'abr/25',cat:'Uniformes',area:'RRHH',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0002-00000066/C',fecha:'2025-04-14',desc:'Concepto: [052] GASTOS DE CAPITAL HUMANO',monto:223883,per:'abr/25',cat:'Capacitaciones',area:'RRHH',hoja:'compras por concepto',ok:true},
+  // may/25
+  {egr:'EGR 9998-00002220/X',fecha:'2025-05-05',desc:'Almuerzo lunes 05/05',monto:51000,per:'may/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00002230/X',fecha:'2025-05-12',desc:'Compra de frutas semanal',monto:18500,per:'may/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  // jun/25
+  {egr:'EGR 9998-00002310/X',fecha:'2025-06-02',desc:'Almuerzo lunes 02/06',monto:53000,per:'jun/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00002320/X',fecha:'2025-06-09',desc:'Compra de frutas semanal',monto:21000,per:'jun/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  // jul/25
+  {egr:'EGR 9998-00002390/X',fecha:'2025-07-07',desc:'Almuerzo lunes 07/07',monto:58000,per:'jul/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00002400/X',fecha:'2025-07-14',desc:'Fruta semanal julio',monto:24000,per:'jul/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  // ago/25
+  {egr:'EGR 9998-00002488/X',fecha:'2025-08-04',desc:'CD/CP- fruta semanal',monto:25600,per:'ago/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00002496/X',fecha:'2025-08-05',desc:'CD/CP- compra de cereales y granola',monto:53200,per:'ago/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00002513/X',fecha:'2025-08-12',desc:'CD/CP Compra de cereales- desayuno salud',monto:51200,per:'ago/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  // sep/25
+  {egr:'EGR 9998-00002600/X',fecha:'2025-09-01',desc:'Almuerzo lunes 01/09',monto:62000,per:'sep/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'FAC 0008-00004995/A',fecha:'2025-09-01',desc:'Concepto: [009] SERVICIO DE COMIDA PERSONAL',monto:1301839,per:'sep/25',cat:'Comida',area:'RRHH',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0009-CH-426/A',fecha:'2025-09-30',desc:'Concepto: [052] GASTOS DE CAPITAL HUMANO',monto:199240,per:'sep/25',cat:'Soft de gestion',area:'RRHH',hoja:'compras por concepto',ok:true},
+  // oct/25
+  {egr:'EGR 9998-00002720/X',fecha:'2025-10-06',desc:'Almuerzo lunes 06/10',monto:65000,per:'oct/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00002735/X',fecha:'2025-10-13',desc:'Fruta semanal octubre',monto:29000,per:'oct/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  // nov/25
+  {egr:'EGR 9998-00002820/X',fecha:'2025-11-03',desc:'Almuerzo lunes 03/11',monto:68000,per:'nov/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00002835/X',fecha:'2025-11-10',desc:'Fruta semanal noviembre',monto:32000,per:'nov/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  // dic/25
+  {egr:'EGR 9998-00002912/X',fecha:'2025-12-09',desc:'CD/CP/FR- FRUTA SEMANAL',monto:39000,per:'dic/25',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00002921/X',fecha:'2025-12-11',desc:'CD/CP/FR- FIESTA FIN DE AÑO',monto:58800,per:'dic/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00002925/X',fecha:'2025-12-11',desc:'CD/CP/FR- FIESTA FIN DE AÑO- reintegro',monto:760000,per:'dic/25',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  // ene/26
+  {egr:'EGR 9998-00003010/X',fecha:'2026-01-05',desc:'Almuerzo lunes 05/01',monto:72000,per:'ene/26',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00003025/X',fecha:'2026-01-12',desc:'Fruta semanal enero',monto:36000,per:'ene/26',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  // feb/26
+  {egr:'EGR 9998-00003110/X',fecha:'2026-02-02',desc:'Almuerzo lunes 02/02',monto:75000,per:'feb/26',cat:'Comida',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  {egr:'EGR 9998-00003125/X',fecha:'2026-02-09',desc:'Fruta semanal febrero',monto:38000,per:'feb/26',cat:'Motivación',area:'RRHH',hoja:'egresos de fondos',ok:true},
+  // mar/26
+  {egr:'FAC 0002-00001989/C',fecha:'2026-03-17',desc:'Concepto: [108] GASTOS INGRESO DE PERSONAL',monto:50000,per:'mar/26',cat:'Gs. Ingreso Personal',area:'RRHH',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0002-00001997/C',fecha:'2026-03-24',desc:'Concepto: [108] GASTOS INGRESO DE PERSONAL',monto:50000,per:'mar/26',cat:'Gs. Ingreso Personal',area:'RRHH',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00001726/A',fecha:'2026-03-09',desc:'Concepto: [105] UNIFORMES CP',monto:29099.97,per:'mar/26',cat:'Uniformes',area:'RRHH',hoja:'compras por concepto',ok:true},
+  // ── MARKETING ────────────────────────────────────
+  // ene/25
+  {egr:'FAC 0002-00000622/C',fecha:'2025-01-21',desc:'SERVICIO DE PUBLICIDAD - MENDEZ SUSANA MAR',monto:99700,per:'ene/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00095039/A',fecha:'2025-01-01',desc:'SERVICIO DE PUBLICIDAD - NUT HOST S.R.L',monto:12000,per:'ene/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0004-00000711/A',fecha:'2025-01-23',desc:'INSUMOS PARA MARKETING',monto:11500,per:'ene/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:true},
+  // feb/25
+  {egr:'FAC 0003-00096343/A',fecha:'2025-02-03',desc:'SERVICIO DE PUBLICIDAD - NUT HOST S.R.L',monto:13750,per:'feb/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00097507/A',fecha:'2025-02-26',desc:'SERVICIO DE PUBLICIDAD - NUT HOST S.R.L',monto:13750,per:'feb/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  // abr/25
+  {egr:'FAC 0003-00098919/A',fecha:'2025-04-01',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:13750,per:'abr/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00000244/X',fecha:'2025-04-28',desc:'GASTOS DE MARKETING - BRUGALI SAS',monto:67498.20,per:'abr/25',cat:'Comida',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00000831/X',fecha:'2025-04-03',desc:'INSUMOS PARA MARKETING',monto:0,per:'abr/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:false},
+  // may/25
+  {egr:'FAC 0003-00100229/A',fecha:'2025-05-01',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:13750,per:'may/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0005-29052025/X',fecha:'2025-05-29',desc:'GASTOS DE MARKETING - VIATICOS',monto:409012.42,per:'may/25',cat:'Viáticos',area:'Marketing',hoja:'compras por concepto',ok:true},
+  // jun/25
+  {egr:'FAC 0003-00101605/A',fecha:'2025-06-02',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:13750,per:'jun/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00102716/A',fecha:'2025-06-26',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:13750,per:'jun/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0006-26062025/A',fecha:'2025-06-26',desc:'GASTOS DE MARKETING - VIATICOS',monto:1078827.90,per:'jun/25',cat:'Viáticos',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00000276/X',fecha:'2025-06-24',desc:'GASTOS DE MARKETING - BRUGALI SAS',monto:107904,per:'jun/25',cat:'Comida',area:'Marketing',hoja:'compras por concepto',ok:true},
+  // jul/25
+  {egr:'FAC 0007-31072025/A',fecha:'2025-07-31',desc:'GASTOS DE MARKETING - VIATICOS',monto:380036.45,per:'jul/25',cat:'Viáticos',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0004-00000864/A',fecha:'2025-07-29',desc:'INSUMOS PARA MARKETING',monto:28400,per:'jul/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:true},
+  // ago/25
+  {egr:'FAC 0002-28082025/A',fecha:'2025-08-28',desc:'GASTOS DE MARKETING - VIATICOS',monto:512875.19,per:'ago/25',cat:'Viáticos',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00104277/A',fecha:'2025-08-01',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:13800,per:'ago/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  // sep/25
+  {egr:'FAC 0003-00105575/A',fecha:'2025-09-01',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:13800,per:'sep/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00106876/A',fecha:'2025-09-30',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:13800,per:'sep/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0009-00000426/A',fecha:'2025-09-30',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:1909468.30,per:'sep/25',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-09092025/X',fecha:'2025-09-09',desc:'GASTOS DE MARKETING - AGENCIA GEN',monto:3045000,per:'sep/25',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  // oct/25
+  {egr:'FAC 9998-00021025/X',fecha:'2025-10-02',desc:'GASTOS DE MARKETING - AMMAN ALEJANDRO',monto:2840000,per:'oct/25',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00071025/X',fecha:'2025-10-07',desc:'GASTOS DE MARKETING - AGENCIA GEN',monto:3045000,per:'oct/25',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0426-31102025/A',fecha:'2025-10-31',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:701653.05,per:'oct/25',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 8404-31102025/A',fecha:'2025-10-31',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:260326,per:'oct/25',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  // nov/25
+  {egr:'FAC 0003-00108275/A',fecha:'2025-11-03',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:13800,per:'nov/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0426-00000011/A',fecha:'2025-11-27',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:906299,per:'nov/25',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 8404-00000011/A',fecha:'2025-11-27',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:87041,per:'nov/25',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00002101/X',fecha:'2025-11-21',desc:'GASTOS DE MARKETING - AGENCIA GEN',monto:3243000,per:'nov/25',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00211125/X',fecha:'2025-11-21',desc:'GASTOS DE MARKETING - AGENCIA GEN',monto:550000,per:'nov/25',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-11112025/X',fecha:'2025-11-11',desc:'GASTOS DE MARKETING - AMMAN ALEJANDRO',monto:1420000,per:'nov/25',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-21112025/X',fecha:'2025-11-21',desc:'GASTOS DE MARKETING - AGENCIA GEN',monto:860000,per:'nov/25',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  // dic/25
+  {egr:'FAC 0003-00109530/A',fecha:'2025-12-01',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:13800,per:'dic/25',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0426-30122025/A',fecha:'2025-12-30',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:1718610.70,per:'dic/25',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 8404-30122025/A',fecha:'2025-12-30',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:47195.30,per:'dic/25',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00101225/X',fecha:'2025-12-10',desc:'GASTOS DE MARKETING - AGENCIA GEN',monto:3243000,per:'dic/25',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00000511/X-a',fecha:'2025-12-19',desc:'INSUMOS PARA MARKETING',monto:39090.91,per:'dic/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:true},
+  {egr:'FAC 9998-00000511/X-b',fecha:'2025-12-19',desc:'INSUMOS PARA MARKETING',monto:37190.08,per:'dic/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:true},
+  {egr:'FAC 9998-00000511/X-c',fecha:'2025-12-19',desc:'INSUMOS PARA MARKETING',monto:34958.68,per:'dic/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:true},
+  {egr:'FAC 9998-00000511/X-d',fecha:'2025-12-19',desc:'INSUMOS PARA MARKETING',monto:231404.96,per:'dic/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:true},
+  {egr:'FAC 9998-00000511/X-e',fecha:'2025-12-19',desc:'INSUMOS PARA MARKETING',monto:144628.10,per:'dic/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:true},
+  {egr:'FAC 9998-00002212/X',fecha:'2025-12-22',desc:'INSUMOS PARA MARKETING',monto:7920.66,per:'dic/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:true},
+  {egr:'FAC 9998-02212258/X',fecha:'2025-12-22',desc:'INSUMOS PARA MARKETING',monto:115041.32,per:'dic/25',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:true},
+  // ene/26
+  {egr:'FAC 0003-00110903/A',fecha:'2026-01-01',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:13800,per:'ene/26',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00112235/A',fecha:'2026-01-29',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:15500,per:'ene/26',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00112238/A',fecha:'2026-01-29',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:14600,per:'ene/26',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0426-29012026/A',fecha:'2026-01-29',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:1841118.40,per:'ene/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 8404-29022026/A',fecha:'2026-01-29',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:80921.60,per:'ene/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00000580/X',fecha:'2026-01-26',desc:'GASTOS DE MARKETING - BRUGALI SAS',monto:73391.60,per:'ene/26',cat:'Comida',area:'Marketing',hoja:'compras por concepto',ok:true},
+  // feb/26
+  {egr:'FAC 0001-00000003/C',fecha:'2026-02-12',desc:'GASTOS DE MARKETING - POLZELLA GARLOS A',monto:260000,per:'feb/26',cat:'Producción y contenido',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0001-00000022/C',fecha:'2026-02-12',desc:'GASTOS DE MARKETING - RASCHINI YAZMIN A',monto:220000,per:'feb/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0002-00000151/C',fecha:'2026-02-12',desc:'GASTOS DE MARKETING - CASTELANELLI EMIL',monto:350000,per:'feb/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0002-00000168/C',fecha:'2026-02-12',desc:'GASTOS DE MARKETING - ROLDAN INFANTE JA',monto:130000,per:'feb/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0002-00000203/C',fecha:'2026-02-10',desc:'GASTOS DE MARKETING - MAGI TOMAS',monto:1550000,per:'feb/26',cat:'Producción y contenido',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00000044/C',fecha:'2026-02-19',desc:'GASTOS DE MARKETING - CABRERA CAROLINA',monto:362100,per:'feb/26',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0426-28022026/A',fecha:'2026-02-28',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:2364451.20,per:'feb/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 8404-28022026/A',fecha:'2026-02-28',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:84628.80,per:'feb/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00000617/X',fecha:'2026-02-05',desc:'GASTOS DE MARKETING - BRUGALI SAS',monto:3681.45,per:'feb/26',cat:'Comida',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00000620/X',fecha:'2026-02-06',desc:'GASTOS DE MARKETING - BRUGALI SAS',monto:57000,per:'feb/26',cat:'Comida',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00001902/X',fecha:'2026-02-19',desc:'INSUMOS PARA MARKETING',monto:66115.70,per:'feb/26',cat:'Gastos varios',area:'Marketing',hoja:'compras por articulo',ok:true},
+  // mar/26
+  {egr:'FAC 0001-00000086/C',fecha:'2026-03-17',desc:'GASTOS DE MARKETING - DEL GUSTE FEDERIC',monto:483000,per:'mar/26',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00113804/A',fecha:'2026-03-02',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:14600,per:'mar/26',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00114201/A',fecha:'2026-03-10',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:15500,per:'mar/26',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0426-26032026/A',fecha:'2026-03-26',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:3921545.10,per:'mar/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 8404-26032026/A',fecha:'2026-03-26',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:406020.10,per:'mar/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00000725/X',fecha:'2026-03-26',desc:'GASTOS DE MARKETING - BRUGALI SAS',monto:10800,per:'mar/26',cat:'Comida',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-00022026/X',fecha:'2026-03-18',desc:'GASTOS DE MARKETING - AMMAN ALEJANDRO',monto:2137500,per:'mar/26',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  // abr/26
+  {egr:'FAC 0001-00000088/C',fecha:'2026-04-09',desc:'GASTOS DE MARKETING - DEL GUSTE FEDERIC',monto:483000,per:'abr/26',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00115366/A',fecha:'2026-04-06',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:15500,per:'abr/26',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0003-00115367/A',fecha:'2026-04-06',desc:'GASTOS DE MARKETING - NUT HOST S.R.L',monto:14600,per:'abr/26',cat:'Plataforma y sistema de marketing',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0004-00002726/A',fecha:'2026-04-06',desc:'GASTOS DE MARKETING - EUGENIO CASTELFRA',monto:22595.48,per:'abr/26',cat:'Gastos varios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0004-00019780/A',fecha:'2026-04-07',desc:'GASTOS DE MARKETING - ORLA MAX SA',monto:35157.98,per:'abr/26',cat:'Gastos varios',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 0426-30042026/A',fecha:'2026-04-30',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:4384651.90,per:'abr/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 7618-20042026/A',fecha:'2026-04-20',desc:'GASTOS DE MARKETING - GASTOS DE VISA EM',monto:151547.72,per:'abr/26',cat:'Anuncios y Publicidad Digital',area:'Marketing',hoja:'compras por concepto',ok:true},
+  {egr:'FAC 9998-24042026/X',fecha:'2026-04-24',desc:'GASTOS DE MARKETING - AMMAN ALEJANDRO',monto:2122500,per:'abr/26',cat:'Honorarios',area:'Marketing',hoja:'compras por concepto',ok:true},
+];
+
+const NAV = [
+  {id:'dashboard',   label:'Dashboard',            roles:['admin','gerencia','responsable'],
+   icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'},
+  {id:'presupuestos',label:'Presupuestos',          roles:['admin','gerencia','responsable'],
+   icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>'},
+  {id:'importar',    label:'Importar Datos',        roles:['admin'],
+   icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>'},
+  {id:'control',     label:'Control Presupuestario',roles:['admin','gerencia'],
+   icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'},
+  {id:'reportes',    label:'Reportes',              roles:['admin','gerencia'],
+   icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'},
+  {id:'configuracion',label:'Configuración',        roles:['admin'],
+   icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>'},
+  {id:'gastos',        label:'Revisión de Gastos',  roles:['gerencia','responsable'],
+   icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>'},
+];
+
+// ── STATE ──────────────────────────────────────────
+let CU = null, CS = 'dashboard';
+let PRES  = [];
+let GDATA = [...SHEET_RAW];
+let SYNC  = {status:'idle',lastSync:null,msg:'Datos pre-cargados',count:SHEET_RAW.length};
+let DASH_TAB = 'resumen';
+let DASH_YEAR = '';  // '' = todos los años
+let DASH_MES  = '';  // '' = todos
+// Reportes filters
+let REP_YEAR = '', REP_MES = '', REP_AREA = '', REP_CAT = '';
+// Modal distribution state
+let CURR_DIST = 'uniforme';
+let CURR_MEN  = {};
+
+function loadLS(){
+  try{const p=localStorage.getItem('b_pres');if(p)PRES=JSON.parse(p);
+  const g=localStorage.getItem('b_gdata');if(g)GDATA=JSON.parse(g);
+  const s=localStorage.getItem('b_sync');if(s)SYNC={...SYNC,...JSON.parse(s)};}catch(e){}
+}
+function saveLS(){
+  try{localStorage.setItem('b_pres',JSON.stringify(PRES));
+  localStorage.setItem('b_gdata',JSON.stringify(GDATA));
+  localStorage.setItem('b_sync',JSON.stringify(SYNC));}catch(e){}
+}
+
+// ── UTILS ──────────────────────────────────────────
+const $=(id)=>document.getElementById(id);
+function $c(n){return new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(n||0)}
+function $c2(n){return new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:2}).format(n||0)}
+function $d(s){if(!s)return'—';try{const d=new Date(s+'T00:00:00');return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return s}}
+function $ts(s){if(!s)return'—';return new Date(s).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function pct(a,b){return b?Math.round(a/b*100):0}
+function clamp(v,lo,hi){return Math.min(hi,Math.max(lo,v))}
+function aCol(n){const a=AREAS.find(x=>x.name===n);return a?a.color:'#6b7280'}
+function avBg(u){return['#1D4856','#33A392','#E3A127','#F58232','#EF402F','#7c3aed'][u.id%6]}
+
+function todayStr(){
+  const d=new Date();
+  const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return dias[d.getDay()]+', '+d.getDate()+' de '+meses[d.getMonth()]+' de '+d.getFullYear();
+}
+
+// ── AUTH ──────────────────────────────────────────
+function init(){
+  loadLS();
+  $('loginPass').onkeydown=e=>{if(e.key==='Enter')doLogin();};
+  $('loginUser').onkeydown=e=>{if(e.key==='Enter')$('loginPass').focus();};
+  try{const rem=localStorage.getItem('b_remember');if(rem){$('loginUser').value=rem;$('rememberMe').checked=true;}}catch(e){}
+  try{const sv=localStorage.getItem('b_session');if(sv){const u=USERS.find(x=>x.id===+JSON.parse(sv));if(u){CU=u;startApp();return;}}}catch(e){}
+  $('loginScreen').style.display='flex';
+}
+
+function toggleLoginPw(){
+  var inp=document.getElementById('loginPass');
+  var icon=document.getElementById('eyeIcon');
+  if(inp.type==='password'){
+    inp.type='text';
+    icon.innerHTML='<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  }else{
+    inp.type='password';
+    icon.innerHTML='<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
+}
+
+function doLogin(){
+  const email=($('loginUser').value||'').trim().toLowerCase();
+  const p=$('loginPass').value;
+  const errUser=$('loginUserErr');
+  const errPw=$('loginErr');
+  errUser.style.display='none';errPw.classList.remove('show');
+  const u=USERS.find(x=>x.email.toLowerCase()===email);
+  if(!u){errUser.style.display='block';return;}
+  if(u.pw!==p){errPw.classList.add('show');return;}
+  if($('rememberMe').checked){localStorage.setItem('b_remember',email);}
+  else{localStorage.removeItem('b_remember');}
+  CU=u;
+  localStorage.setItem('b_session',JSON.stringify(u.id));
+  startApp();
+}
+
+function doForgotPw(){
+  const email=($('loginUser').value||'').trim().toLowerCase();
+  const fb=$('loginFeedback');
+  if(!email){
+    fb.style.color='var(--danger)';
+    fb.textContent='Ingresa tu correo primero para recuperar la contraseña.';
+    fb.style.display='block';return;
+  }
+  const u=USERS.find(x=>x.email.toLowerCase()===email);
+  if(!u){fb.style.color='var(--danger)';fb.textContent='No encontramos un usuario con ese correo.';fb.style.display='block';return;}
+  fb.style.color='var(--success)';
+  fb.textContent='Tu contrasena actual es: "'+u.pw+'". Podés cambiarla desde Configuracion > Usuarios.';
+  fb.style.display='block';
+}
+
+function doRecordarUsuario(){
+  var fb=document.getElementById('loginFeedback');
+  fb.style.color='var(--primary)';
+  fb.style.display='block';
+  var rows=USERS.map(function(u){
+    return '<div style="margin-top:6px;cursor:pointer;text-decoration:underline;color:var(--primary);font-size:13px" onclick="setLoginEmail(this)" data-email="'+u.email+'">'+u.name+' ('+u.email+')</div>';
+  }).join('');
+  fb.innerHTML='<strong style=\"display:block;margin-bottom:4px\">Usuarios registrados:</strong>'+rows;
+}
+function setLoginEmail(el){
+  document.getElementById('loginUser').value=el.getAttribute('data-email');
+  document.getElementById('loginFeedback').style.display='none';
+}
+
+function doLogout(){
+  CU=null;localStorage.removeItem('b_session');
+  $('appScreen').style.display='none';
+  $('loginScreen').style.display='flex';
+  $('loginPass').value='';
+  var fb=$('loginFeedback');if(fb)fb.style.display='none';
+  $('loginErr').classList.remove('show');
+  $('loginUserErr').style.display='none';
+}
+function startApp(){
+  $('loginScreen').style.display='none';
+  $('appScreen').style.display='block';
+  $('tbDate').textContent=todayStr();
+  renderTbUser();renderSidebar();renderSyncPill();navigate('dashboard');
+  // Auto-sync from Google Sheets on login (non-blocking)
+  setTimeout(()=>doSync(),800);
+}
+
+// ── TOPBAR / SIDEBAR ──────────────────────────────
+function renderTbUser(){
+  $('tbUser').innerHTML=`<div class="avatar" style="background:${avBg(CU)};width:28px;height:28px;font-size:11px">${CU.init}</div><div><div class="tb-user-name">${CU.name}</div><div class="tb-user-role">${CU.rlabel}</div></div>`;
+}
+function renderSidebar(){
+  const nav=NAV.filter(n=>n.roles.includes(CU.role));
+  $('sbNav').innerHTML=nav.map(n=>`<div class="nav-item${CS===n.id?' active':''}" id="ni-${n.id}" onclick="navigate('${n.id}')">${n.icon}<span>${n.label}</span></div>`).join('');
+  $('sbUser').innerHTML=`<div class="sb-user-row"><div class="avatar" style="background:${avBg(CU)}">${CU.init}</div><div><div class="sb-user-name">${CU.name}</div><div class="sb-user-area">${CU.area}</div></div></div><button class="sb-logout" onclick="doLogout()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Cerrar sesión</button>`;
+}
+function renderSyncPill(){
+  const dot=$('syncDot');const txt=$('syncTxt');
+  dot.className='sync-dot '+(SYNC.status==='done'?'done':SYNC.status==='syncing'?'syncing':SYNC.status==='error'?'error':'');
+  txt.textContent=SYNC.status==='syncing'?'Sincronizando…':SYNC.lastSync?'Sync '+$ts(SYNC.lastSync):'Sin sincronizar';
+}
+
+// ── NAVIGATION ────────────────────────────────────
+const SLABELS={dashboard:'Dashboard',presupuestos:'Presupuestos',importar:'Importar Datos',control:'Control Presupuestario',reportes:'Reportes',configuracion:'Configuración',gastos:'Revisión de Gastos'};
+function navigate(id){
+  const allowed=CU.role==='admin'
+    ?['dashboard','presupuestos','importar','control','reportes','configuracion']
+    :CU.role==='gerencia'
+    ?['dashboard','presupuestos','control','reportes','gastos']
+    :['dashboard','presupuestos','gastos'];
+  if(!allowed.includes(id)){id='dashboard';}
+  CS=id;
+  $('tbTitle').innerHTML=SLABELS[id]+'<span class="tb-subtitle" id="tbSub"></span>';
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.id==='ni-'+id));
+  document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
+  const s=$('sec-'+id);if(s)s.classList.add('active');
+  ({dashboard:renderDash,presupuestos:renderPres,importar:renderImportar,control:renderControl,reportes:renderReportes,configuracion:renderConfig,gastos:renderGastos}[id]||function(){})();
+}
+
+// ── GAUGE ─────────────────────────────────────────
+function makeGauge(pp){
+  pp=clamp(pp,0,100);
+  const cx=180,cy=162,R=124,rI=88;
+  const rad=a=>a*Math.PI/180;
+  const pt=(a)=>({x:cx+R*Math.cos(rad(a)),y:cy-R*Math.sin(rad(a))});
+  const ptI=(a)=>({x:cx+rI*Math.cos(rad(a)),y:cy-rI*Math.sin(rad(a))});
+
+  // zone arcs (background)
+  function arc(a1,a2,col,sw){
+    const s=pt(a1),e=pt(a2),la=Math.abs(a1-a2)>180?1:0,sw_=a1>a2?1:0;
+    return `<path d="M${s.x} ${s.y} A${R} ${R} 0 ${la} ${sw_} ${e.x} ${e.y}" fill="none" stroke="${col}" stroke-width="${sw||20}" stroke-linecap="butt"/>`;
+  }
+  // 0%=180°, 100%=0°; zones: 0-80%=green(180→36°), 80-90%=yellow(36→18°), 90-100%=red(18→0°)
+  const zones=[arc(180,36,'#22c55e'),arc(36,18,'#f59e0b'),arc(18,0,'#ef4444')];
+
+  // needle angle
+  const na=180-pp*1.8;
+  const ne=pt(na);
+  const col=pp<=80?'#22c55e':pp<=90?'#f59e0b':'#ef4444';
+  const label=pp<=80?'Ejecución saludable':pp<=90?'⚠ En alerta':'🔴 Excedido';
+
+  // ticks
+  const ticks=[];
+  for(let i=0;i<=10;i++){const a=180-i*18;const o=pt(a);const i2={x:cx+(R-9)*Math.cos(rad(a)),y:cy-(R-9)*Math.sin(rad(a))};ticks.push(`<line x1="${o.x}" y1="${o.y}" x2="${i2.x}" y2="${i2.y}" stroke="#2a5f78" stroke-width="2.5"/>`);}
+
+  return `<svg viewBox="0 0 360 220" style="width:100%;max-width:640px;height:auto">
+    ${arc(180,0,'#164059',20)}
+    ${zones.join('')}
+    ${ticks.join('')}
+    <line x1="${cx}" y1="${cy}" x2="${ne.x}" y2="${ne.y}" stroke="${col}" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="9" fill="#1D4856" stroke="${col}" stroke-width="3.5"/>
+    <text x="${cx}" y="${cy+46}" text-anchor="middle" font-size="38" font-weight="800" fill="${col}" font-family="Inter,sans-serif">${pp}%</text>
+    <text x="${cx}" y="${cy+68}" text-anchor="middle" font-size="14" fill="#8892b0" font-family="Inter,sans-serif">${label}</text>
+  </svg>`;
+}
+
+// ── PIE CHART ─────────────────────────────────────
+const CHART_COLORS=['#1D4856','#33A392','#E3A127','#F58232','#EF402F','#7c3aed','#0891b2','#059669','#d97706','#6366f1'];
+function makePieChart(slices){
+  const total=slices.reduce((s,x)=>s+x.value,0);
+  if(!total)return'';
+  const cx=130,cy=130,R=100,rI=58;
+  let ang=-90;const paths=[];const rad=a=>a*Math.PI/180;
+  slices.forEach(sl=>{
+    const deg=(sl.value/total)*360;if(deg<0.5)return;
+    const a1=ang,a2=ang+deg;ang=a2;
+    const x1=cx+R*Math.cos(rad(a1)),y1=cy+R*Math.sin(rad(a1));
+    const x2=cx+R*Math.cos(rad(a2)),y2=cy+R*Math.sin(rad(a2));
+    const xi1=cx+rI*Math.cos(rad(a1)),yi1=cy+rI*Math.sin(rad(a1));
+    const xi2=cx+rI*Math.cos(rad(a2)),yi2=cy+rI*Math.sin(rad(a2));
+    const la=deg>180?1:0;
+    paths.push(`<path d="M${x1.toFixed(1)} ${y1.toFixed(1)} A${R} ${R} 0 ${la} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} L${xi2.toFixed(1)} ${yi2.toFixed(1)} A${rI} ${rI} 0 ${la} 0 ${xi1.toFixed(1)} ${yi1.toFixed(1)} Z" fill="${sl.color}" stroke="#fff" stroke-width="2.5"/>`);
+  });
+  return`<svg viewBox="0 0 260 260" style="width:100%;max-width:260px;height:auto;flex-shrink:0;display:block">
+    ${paths.join('')}
+    <text x="${cx}" y="${cx-10}" text-anchor="middle" font-size="11" fill="#6b7280" font-family="Inter,sans-serif">Total gastos</text>
+    <text x="${cx}" y="${cx+14}" text-anchor="middle" font-size="15" font-weight="800" fill="#1e2139" font-family="Inter,sans-serif">${$c(total)}</text>
+  </svg>`;
+}
+function makePieChartBig(slices){
+  const total=slices.reduce((s,x)=>s+x.value,0);
+  if(!total)return'';
+  const cx=185,cy=185,R=168,rI=105;
+  let ang=-90;const paths=[];const labels=[];const rad=a=>a*Math.PI/180;
+  slices.forEach(sl=>{
+    const deg=(sl.value/total)*360;if(deg<0.5)return;
+    const a1=ang,a2=ang+deg;const mid=(a1+a2)/2;ang=a2;
+    const x1=cx+R*Math.cos(rad(a1)),y1=cy+R*Math.sin(rad(a1));
+    const x2=cx+R*Math.cos(rad(a2)),y2=cy+R*Math.sin(rad(a2));
+    const xi1=cx+rI*Math.cos(rad(a1)),yi1=cy+rI*Math.sin(rad(a1));
+    const xi2=cx+rI*Math.cos(rad(a2)),yi2=cy+rI*Math.sin(rad(a2));
+    const la=deg>180?1:0;
+    paths.push(`<path d="M${x1.toFixed(1)} ${y1.toFixed(1)} A${R} ${R} 0 ${la} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} L${xi2.toFixed(1)} ${yi2.toFixed(1)} A${rI} ${rI} 0 ${la} 0 ${xi1.toFixed(1)} ${yi1.toFixed(1)} Z" fill="${sl.color}" stroke="#fff" stroke-width="2.5"/>`);
+    const pp=Math.round(sl.value/total*100);
+    if(deg>=14){
+      const lr=(R+rI)/2;
+      const lx=(cx+lr*Math.cos(rad(mid))).toFixed(1);
+      const ly=(cy+lr*Math.sin(rad(mid))+5).toFixed(1);
+      labels.push(`<text x="${lx}" y="${ly}" text-anchor="middle" font-size="13" font-weight="800" fill="white" font-family="Nunito,sans-serif" style="pointer-events:none">${pp}%</text>`);
+    }
+  });
+  return`<svg viewBox="0 0 370 370" style="width:100%;max-width:360px;height:auto;flex-shrink:0;display:block">
+    ${paths.join('')}
+    ${labels.join('')}
+    <text x="${cx}" y="${cy-10}" text-anchor="middle" font-size="12" fill="#999" font-family="Nunito,sans-serif">Total gastos</text>
+    <text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="17" font-weight="800" fill="#221F1F" font-family="Nunito,sans-serif">${$c(total)}</text>
+  </svg>`;
+}
+
+function makeCategorySection(gFilt){
+  const byCat={};
+  CATEGORIAS.forEach(c=>{const m=gFilt.filter(g=>g.cat===c).reduce((s,x)=>s+x.monto,0);if(m>0)byCat[c]=m;});
+  const entries=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length)return`<div class="card" style="margin-bottom:18px"><div class="card-bd"><div class="empty"><p>Sin datos de gasto para el período seleccionado.</p></div></div></div>`;
+  const total=entries.reduce((s,[,v])=>s+v,0);
+  const slices=entries.map(([label,value],i)=>({label,value,color:CHART_COLORS[i%CHART_COLORS.length]}));
+  return`<div class="card" style="margin-bottom:18px">
+    <div class="card-hd"><h3>Gasto por Categoría</h3><span class="badge bg-purple">${entries.length} categoría${entries.length!==1?'s':''}</span></div>
+    <div class="card-bd">
+      <div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:16px">Ranking de gastos</div>
+          ${slices.map((s,i)=>{const pp=pct(s.value,total||1);return`<div style="margin-bottom:13px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:11px;font-weight:700;color:var(--muted);width:16px">${i+1}</span>
+                <div style="width:10px;height:10px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
+                <span style="font-size:13px;color:var(--text);font-weight:500">${s.label}</span>
+              </div>
+              <div style="text-align:right;white-space:nowrap">
+                <span style="font-size:13px;font-weight:700;color:var(--text)">${$c(s.value)}</span>
+                <span style="font-size:11px;color:var(--muted);margin-left:6px">${pp}%</span>
+              </div>
+            </div>
+            <div class="pbar" style="height:7px"><div class="fill" style="width:${pp}%;background:${s.color}"></div></div>
+          </div>`;}).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── DASHBOARD ─────────────────────────────────────
+function renderDash(){
+  // Filter gastos by year/month
+  const gFilt=GDATA.filter(g=>{
+    if(!g.per)return false;
+    const yy=g.per.length===6?'20'+g.per.slice(4):g.per.slice(4);
+    if(DASH_YEAR&&yy!==DASH_YEAR)return false;
+    if(DASH_MES&&!g.per.startsWith(DASH_MES))return false;
+    if(CU.role==='responsable'&&(g.area||'RRHH')!==CU.area)return false;
+    return true;
+  });
+  // Filter presupuestos by year/month
+  // No-admin users only see their area's budget
+  const PRES_AREA=CU.role==='admin'?PRES:PRES.filter(p=>p.area===CU.area);
+  const GDATA_AREA=CU.role==='admin'?GDATA:GDATA;  // gastos no filtrados por área (no tienen campo área)
+  const pFilt=PRES_AREA.filter(p=>{
+    if(DASH_YEAR&&String(p.anio||p.per?.slice(4))!==DASH_YEAR)return false;
+    if(DASH_MES){
+      return true;
+    }
+    return true;
+  });
+  // Compute totals
+  const totP=pFilt.reduce((s,p)=>{
+    if(DASH_MES&&p.mensual)return s+(p.mensual[DASH_MES]||0);
+    return s+p.monto;
+  },0);
+  const totG=gFilt.reduce((s,g)=>s+g.monto,0);
+  const saldo=totP-totG;
+  const ejec=pct(totG,totP||1);
+  const ejecColor=ejec<=80?'#22c55e':ejec<=90?'#f59e0b':'#ef4444';
+
+  const tab=(id,lbl)=>`<div class="tab${DASH_TAB===id?' active':''}" onclick="setDashTab('${id}')">${lbl}</div>`;
+
+  // Pie data for dashboard
+  const byCatDash={};
+  CATEGORIAS.forEach(c=>{const m=gFilt.filter(g=>g.cat===c).reduce((s,x)=>s+x.monto,0);if(m>0)byCatDash[c]=m;});
+  const catEntries=Object.entries(byCatDash).sort((a,b)=>b[1]-a[1]);
+  const catTotal=catEntries.reduce((s,[,v])=>s+v,0);
+  const catSlices=catEntries.map(([label,value],i)=>({label,value,color:CHART_COLORS[i%CHART_COLORS.length]}));
+
+  const resumen=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px">
+      <div class="metric-card c-blue">
+        <div class="mc-icon">💰</div>
+        <div class="mc-label">Presupuesto ${DASH_YEAR||new Date().getFullYear()}</div>
+        <div class="mc-value">${$c(totP)}</div>
+        <div class="mc-pct" style="color:var(--primary)">100%</div>
+        <div class="mc-sub">${pFilt.length} presupuesto${pFilt.length!==1?'s':''} activo${pFilt.length!==1?'s':''}</div>
+      </div>
+      <div class="metric-card c-green">
+        <div class="mc-icon">📊</div>
+        <div class="mc-label">Gasto Real Acumulado</div>
+        <div class="mc-value">${$c(totG)}</div>
+        <div class="mc-pct" style="color:${ejecColor}">${ejec}%</div>
+        <div class="mc-sub">${gFilt.length} registro${gFilt.length!==1?'s':''}</div>
+      </div>
+      <div class="metric-card c-orange">
+        <div class="mc-icon">📉</div>
+        <div class="mc-label">Desvío</div>
+        <div class="mc-value" style="color:${saldo>=0?'var(--success)':'var(--danger)'};font-size:${Math.abs(saldo)>999999?'18px':'24px'}">${saldo>=0?'+':''}${$c(saldo)}</div>
+        <div class="mc-pct" style="color:${saldo>=0?'var(--success)':'var(--danger)'}">${saldo>=0?'Dentro del presupuesto':'Excedido'}</div>
+        <div class="mc-sub">${saldo>=0?'Margen disponible':'Revisar gastos'}</div>
+      </div>
+    </div>
+    <div class="gauge-card">
+      <h4>Ejecución Global</h4>
+      ${makeGauge(ejec)}
+      <div class="gauge-legend">
+        <span><div class="gdot" style="background:#33A392"></div>OK &lt;80%</span>
+        <span><div class="gdot" style="background:#E3A127"></div>Alerta</span>
+        <span><div class="gdot" style="background:#EF402F"></div>Exceso</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3>Gasto por Categoría</h3><span class="badge bg-purple">${catEntries.length} categoría${catEntries.length!==1?'s':''}</span></div>
+      <div class="card-bd">
+        ${catEntries.length===0
+          ? `<div class="empty"><p>Sin datos de gasto para el período seleccionado.</p></div>`
+          : `<div style="display:grid;grid-template-columns:360px 1fr;gap:36px;align-items:center">
+              ${makePieChartBig(catSlices)}
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Top categorías</div>
+                ${catSlices.slice(0,6).map((s,i)=>{const pp=pct(s.value,catTotal||1);return`<div style="margin-bottom:13px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span style="font-size:11px;font-weight:700;color:var(--muted);width:16px">${i+1}</span>
+                      <div style="width:11px;height:11px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
+                      <span style="font-size:13px;color:var(--text);font-weight:600">${s.label}</span>
+                    </div>
+                    <div style="white-space:nowrap">
+                      <span style="font-size:13px;font-weight:700;color:var(--text)">${$c(s.value)}</span>
+                      <span style="font-size:11px;color:var(--muted);margin-left:6px">${pp}%</span>
+                    </div>
+                  </div>
+                  <div class="pbar" style="height:7px"><div class="fill" style="width:${pp}%;background:${s.color}"></div></div>
+                </div>`;}).join('')}
+                ${catSlices.length>6?`<div style="font-size:11px;color:var(--muted);margin-top:8px">+${catSlices.length-6} categorías más</div>`:''}
+              </div>
+            </div>`}
+      </div>
+    </div>
+  `;
+
+  // Detalle tab: full presupuesto info with monthly breakdown + pie chart
+  const detalle=`
+    ${makeCategorySection(gFilt)}
+  `;
+
+  
+  $('dContent').innerHTML=`
+    <div class="tabs">${tab('resumen','Resumen Ejecutivo')}${tab('detalle','Detalle de Presupuesto')}</div>
+    <div class="fbar">
+      <div class="fbar-label">📅 Período</div>
+      <select class="input" style="width:auto;min-width:120px" id="dashYear" onchange="DASH_YEAR=this.value;renderDash()">
+        <option value="">Todos los años</option>
+        ${[...new Set(GDATA.map(g=>g.per?'20'+g.per.slice(4):null).filter(Boolean))].sort().reverse().map(y=>`<option value="${y}"${DASH_YEAR===y?' selected':''}>${y}</option>`).join('')}
+      </select>
+      <select class="input" style="width:auto;min-width:150px" id="dashMes" onchange="DASH_MES=this.value;renderDash()">
+        <option value="">Todos los meses</option>
+        ${MESES.map(m=>`<option value="${m.k}"${DASH_MES===m.k?' selected':''}>${m.l}</option>`).join('')}
+      </select>
+    </div>
+    ${DASH_TAB==='resumen'?resumen:detalle}
+  `;
+}
+function setDashTab(t){DASH_TAB=t;renderDash();}
+function periodoTable(gFilt){
+  const data=gFilt||GDATA;
+  const pers=[...new Set(data.map(g=>g.per))].filter(Boolean).sort();
+  if(!pers.length)return`<div class="card"><div class="card-bd"><p style="color:var(--muted);text-align:center;padding:20px 0;font-size:14px">Aún no hay gastos para el período seleccionado. Hacé click en <strong>Actualizar ahora</strong> para sincronizar con Google Sheets.</p></div></div>`;
+  const tot=data.reduce((s,g)=>s+g.monto,0);
+  return`<div class="card"><div class="card-hd"><h3>Gastos por Período</h3></div><div class="card-bd" style="padding:0"><div class="tw"><table>
+    <thead><tr><th>Período</th><th>Cant.</th><th>Monto</th><th>% del total</th></tr></thead>
+    <tbody>${pers.map(p=>{const rows=data.filter(g=>g.per===p);const m=rows.reduce((s,x)=>s+x.monto,0);const pp=pct(m,tot||1);
+    return`<tr><td><span class="badge bg-blue">${p}</span></td><td>${rows.length}</td><td><strong>${$c(m)}</strong></td><td><div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="flex:1"><div class="fill" style="width:${pp}%;background:var(--primary)"></div></div><span style="font-size:12px;width:35px;text-align:right">${pp}%</span></div></td></tr>`;}).join('')}
+    </tbody></table></div></div></div>`;
+}
+
+// ── PRESUPUESTOS ──────────────────────────────────
+function renderPres(){
+  const canEdit=CU.role==='admin';
+  const isAdmin=CU.role==='admin';
+  // Usuarios no-admin solo ven el presupuesto de su área
+  const PRES_VIEW=isAdmin?PRES:PRES.filter(p=>p.area===CU.area);
+  const total=PRES_VIEW.reduce((s,p)=>s+p.monto,0);
+  $('pContent').innerHTML=`
+    ${canEdit?`<div class="fbar"><button class="btn btn-primary" onclick="openPModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nuevo Presupuesto</button></div>`:''}
+    ${!isAdmin?`<div class="alert alert-info" style="margin-bottom:14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Mostrando presupuesto del área: <strong>${CU.area}</strong></div>`:''}
+    <div class="card"><div class="card-hd"><h3>Presupuestos Cargados <span class="badge bg-gray" style="margin-left:6px">${PRES_VIEW.length}</span></h3></div>
+    <div class="card-bd" style="padding:0">
+      ${PRES_VIEW.length===0?`<div class="empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><p>No hay presupuestos cargados para tu área.</p></div>`:`
+      <div class="tw"><table>
+        <thead><tr><th>Área</th><th>Año Fiscal</th><th>Monto Anual</th><th>Tipo</th><th>Estado</th><th>Distribución</th>${canEdit?'<th></th>':''}</tr></thead>
+        <tbody>${PRES_VIEW.map(p=>`<tr>
+          <td><span class="adot" style="background:${aCol(p.area)}"></span>${p.area}</td>
+          <td><span class="badge bg-blue">${p.anio}</span></td>
+          <td><strong>${$c(p.monto)}</strong></td>
+          <td><span class="badge bg-purple">${p.tipo||'—'}</span></td>
+          <td><span class="badge ${p.estado==='Activo'?'bg-green':p.estado==='Borrador'?'bg-gray':p.estado==='Cerrado'?'bg-red':'bg-orange'}">${p.estado||'—'}</span></td>
+          <td style="font-size:12px;color:var(--muted);text-transform:capitalize">${p.distribucion||'uniforme'}</td>
+          ${canEdit?`<td style="white-space:nowrap">
+            <button class="btn-icon" onclick="openPModal('${p.id}')" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></button>
+            <button class="btn-icon" onclick="delPres('${p.id}')" style="color:var(--danger);border-color:var(--danger-b)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+          </td>`:''}
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <div class="tfoot-row"><span>${PRES_VIEW.length} ítem${PRES_VIEW.length!==1?'s':''}</span><strong>${$c(total)}</strong></div>`}
+    </div></div>`;
+}
+
+function autoSumMeses(){
+  if(CURR_DIST!=='personalizada')return;
+  var tot=MESES.reduce(function(s,m){return s+(CURR_MEN[m.k]||0);},0);
+  var a=$('pm_anual');if(a)a.value=Math.round(tot);
+}
+function _buildMonthGrid(readonly){
+  return `<div class="month-grid">${MESES.map(m=>`
+    <div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase">${m.l.slice(0,3)}</div>
+      <div class="input-pref">
+        <span>$</span>
+        <input type="number" id="pm_${m.k}" min="0" step="1"
+          value="${CURR_MEN[m.k]||0}"
+          ${readonly?'readonly style="background:var(--bg);color:var(--muted)"':''}
+          oninput="CURR_MEN['${m.k}']=parseFloat(this.value)||0;autoSumMeses()"/>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function setDist(type){
+  CURR_DIST=type;
+  // Recalculate monthly values based on type
+  const montoAnual=parseFloat($('pm_anual').value)||0;
+  if(type==='uniforme'){
+    const c=montoAnual/12;
+    MESES.forEach(m=>{CURR_MEN[m.k]=Math.round(c);});
+  } else if(type==='estacional'){
+    MESES.forEach(m=>{CURR_MEN[m.k]=Math.round(montoAnual*(DIST_ESTACIONAL[m.k]||8)/100);});
+  }
+  // personalizada: keep existing values
+  // Re-render the grid section
+  $('distGrid').innerHTML=_buildMonthGrid(type==='uniforme');
+  // Update button states
+  document.querySelectorAll('.dist-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.dist===type);
+  });
+}
+
+function openPModal(id){
+  const p=id?PRES.find(x=>x.id===id):null;
+  // Init state
+  CURR_DIST=p?p.distribucion:'uniforme';
+  CURR_MEN=p&&p.mensual?{...p.mensual}:{};
+  if(!p){MESES.forEach(m=>{CURR_MEN[m.k]=0;});}
+  $('mTitle').textContent=p?'Editar Presupuesto':'Nuevo Presupuesto';
+  $('mBody').innerHTML=`
+    <div class="form-grid">
+      <div class="fg"><label>Área *</label><select class="input" id="pa">${AREAS.map(a=>`<option value="${a.name}"${p&&p.area===a.name?' selected':''}>${a.name}</option>`).join('')}</select></div>
+      <div class="fg"><label>Año Fiscal *</label><input type="number" class="input" id="panio" min="2020" max="2035" value="${p?p.anio:new Date().getFullYear()}"/></div>
+      <div class="fg"><label>Monto Anual (ARS) *</label>
+        <div class="input-pref">
+          <span>$</span>
+          <input type="number" class="input" id="pm_anual" min="0" step="1" value="${p?p.monto:''}" style="border:none;border-radius:0"
+            oninput="if(CURR_DIST!=='personalizada')setDist(CURR_DIST)"/>
+        </div>
+      </div>
+      <div class="fg"><label>Tipo</label><select class="input" id="ptipo">${TIPOS_PRES.map(t=>`<option value="${t}"${p&&p.tipo===t?' selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="fg"><label>Estado</label><select class="input" id="pestado">${ESTADOS_PRES.map(e=>`<option value="${e}"${p&&p.estado===e?' selected':''}>${e}</option>`).join('')}</select></div>
+    </div>
+    <div class="fg" style="margin-top:4px">
+      <div class="section-label">DISTRIBUCIÓN MENSUAL</div>
+      <div class="dist-btns">
+        <button class="dist-btn${CURR_DIST==='uniforme'?' active':''}" data-dist="uniforme" onclick="setDist('uniforme')">Uniforme</button>
+        <button class="dist-btn${CURR_DIST==='estacional'?' active':''}" data-dist="estacional" onclick="setDist('estacional')">Estacional</button>
+        <button class="dist-btn${CURR_DIST==='personalizada'?' active':''}" data-dist="personalizada" onclick="setDist('personalizada')">Personalizada</button>
+      </div>
+      <div id="distGrid">${_buildMonthGrid(CURR_DIST==='uniforme')}</div>
+    </div>
+    <div class="fg" style="margin-top:10px"><label>Descripción (opcional)</label><input type="text" class="input" id="pd" value="${p?p.desc||'':''}"/></div>
+    <div class="err-msg" id="perr"></div>`;
+  // Auto-calculate if new presupuesto with uniforme dist
+  if(!p){setDist('uniforme');}
+  $('mFoot').innerHTML=`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="savePres('${id||''}')">Guardar</button>`;
+  $('modalOv').style.display='flex';
+}
+
+function savePres(id){
+  const a=$('pa').value,anio=parseInt($('panio').value),m=parseFloat($('pm_anual').value),tipo=$('ptipo').value,estado=$('pestado').value,d=$('pd').value.trim();
+  const e=$('perr');
+  if(!a||!anio||isNaN(m)||m<=0){e.textContent='Completá los campos obligatorios: Área, Año Fiscal y Monto Anual.';e.classList.add('show');return;}
+  e.classList.remove('show');
+  // Read monthly values from inputs
+  const mensual={};
+  MESES.forEach(mes=>{
+    const inp=$('pm_'+mes.k);
+    mensual[mes.k]=inp?parseFloat(inp.value)||0:0;
+  });
+  const obj={id:id||uid(),area:a,anio,monto:m,tipo,estado,distribucion:CURR_DIST,mensual,desc:d,by:CU.name};
+  if(id){const i=PRES.findIndex(x=>x.id===id);if(i>=0)PRES[i]={...PRES[i],...obj};}
+  else PRES.push(obj);
+  saveLS();closeModal();renderPres();
+}
+function delPres(id){if(!confirm('¿Eliminás este presupuesto?'))return;PRES=PRES.filter(p=>p.id!==id);saveLS();renderPres();}
+
+// ── IMPORTAR DATOS ────────────────────────────────
+// ── PREVIEW TABLE (filter + sort) ────────────────
+var _pvState={f:null,fa:null,sc:null,sd:-1};
+var _pvCols=['egr','fecha','desc','per','cat','monto'];
+function pvRender(){
+  var tbody=document.getElementById('pvTbody');
+  var foot=document.getElementById('pvFoot');
+  if(!tbody||!foot)return;
+  var d=GDATA.filter(function(g){
+    if(_pvState.f&&g.cat!==_pvState.f)return false;
+    if(_pvState.fa&&(g.area||'RRHH')!==_pvState.fa)return false;
+    return true;
+  });
+  if(_pvState.sc){
+    var col=_pvState.sc,dir=_pvState.sd;
+    d=d.slice().sort(function(a,b){
+      var av=a[col],bv=b[col];
+      if(col==='fecha'){av=av?new Date(av):new Date(0);bv=bv?new Date(bv):new Date(0);return(av-bv)*dir;}
+      if(col==='monto')return((av||0)-(bv||0))*dir;
+      return String(av||'').localeCompare(String(bv||''),'es')*dir;
+    });
+  }
+  var _ajustesPv=JSON.parse(localStorage.getItem('b_ajustes')||'[]');
+  tbody.innerHTML=d.map(function(g,i){
+    var _yaSol=_ajustesPv.some(function(a){return a.egr===g.egr&&!a.resuelto;});
+    var adjBtn=_yaSol
+      ?'<button disabled style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;'
+        +'background:var(--success-bg);color:#16a34a;border:1px solid var(--success-b);white-space:nowrap;cursor:default">'
+        +'✓ Revisión solicitada</button>'
+      :'<button onclick="solicitarAjuste(this)" data-egr="'+g.egr+'" data-desc="'+g.desc.replace(/"/g,'&quot;')+'" data-monto="'+g.monto+'" data-per="'+g.per+'" '
+        +'style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;'
+        +'background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;white-space:nowrap;transition:all .15s" '
+        +'onmouseover="this.style.background=&quot;#ffedd5&quot;" onmouseout="this.style.background=&quot;#fff7ed&quot;">'
+        +'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>'
+        +'Solicitar revisión</button>';
+    return '<tr>'
+      +'<td style="color:var(--muted);font-size:12px">'+(i+1)+'</td>'
+      +'<td style="font-family:monospace;font-size:11px;color:var(--muted);white-space:nowrap">'+g.egr+'</td>'
+      +'<td style="white-space:nowrap">'+$d(g.fecha)+'</td>'
+      +'<td>'+g.desc+'</td>'
+      +'<td><span class="badge bg-blue">'+g.per+'</span></td>'
+      +'<td><span class="badge bg-purple">'+(g.cat||'—')+'</span></td>'
+      +'<td><strong>'+$c2(g.monto)+'</strong></td>'
+      +'<td><span class="badge bg-cyan" style="font-size:10px">'+g.hoja+'</span></td>'
+      +'<td>'+adjBtn+'</td>'
+      +'</tr>';
+  }).join('');
+  var tot=d.reduce(function(s,g){return s+g.monto;},0);
+  var desc='';
+  if(_pvState.f)desc+=' · cat: "'+_pvState.f+'"';
+  if(_pvState.fa)desc+=' · área: "'+_pvState.fa+'"';
+  foot.innerHTML='<span style="font-size:12px">'+d.length+' registro'+(d.length!==1?'s':'')+(desc||' · todos')+'</span><strong>'+$c(tot)+'</strong>';
+}
+function pvFilter(cat){
+  _pvState.f=cat||null;_pvState.sc=null;_pvState.sd=-1;
+  var sel=document.getElementById('pvSelect');
+  if(sel)sel.value=cat||'';
+  _pvCols.forEach(function(c){
+    var th=document.getElementById('pvTh-'+c),ar=document.getElementById('pvS-'+c);
+    if(th)th.classList.remove('active');if(ar)ar.textContent='⇅';
+  });
+  pvRender();
+}
+function pvFilterArea(area){
+  _pvState.fa=area||null;
+  var sel=document.getElementById('pvSelectArea');
+  if(sel)sel.value=area||'';
+  pvRender();
+}
+function solicitarAjuste(btn){
+  var egr=btn.getAttribute('data-egr');
+  var desc=btn.getAttribute('data-desc');
+  var monto=btn.getAttribute('data-monto');
+  var per=btn.getAttribute('data-per');
+  document.getElementById('mTitle').textContent='Solicitar ajuste de gasto';
+  document.getElementById('mBody').innerHTML=
+    '<div style="background:var(--warning-bg);border:1px solid var(--warning-b);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:16px;font-size:12.5px">'
+    +'<div style="font-weight:700;color:#b45309;margin-bottom:6px">Comprobante: '+egr+'</div>'
+    +'<div style="color:var(--text);margin-bottom:2px">'+desc+'</div>'
+    +'<div style="color:var(--muted)">Período: <strong>'+per+'</strong> · Monto: <strong>'+$c2(parseFloat(monto))+'</strong></div>'
+    +'</div>'
+    +'<div class="fg"><label>Dirigido a</label>'
+    +'<select class="input" id="ajDestinatario">'
+    +'<option value="">— Seleccioná el responsable —</option>'
+    +USERS.filter(function(u){return u.role==='admin'||u.role==='gerencia';}).map(function(u){
+      return '<option value="'+u.name+'">'+u.name+' — '+u.rlabel+'</option>';
+    }).join('')
+    +'</select></div>'
+    +'<div class="fg"><label>Motivo del ajuste</label>'
+    +'<select class="input" id="ajMotivo">'
+    +'<option value="">— Seleccioná un motivo —</option>'
+    +'<option>Categoría incorrecta</option>'
+    +'<option>Monto incorrecto</option>'
+    +'<option>Período equivocado</option>'
+    +'<option>Registro duplicado</option>'
+    +'<option>Otro</option>'
+    +'</select></div>'
+    +'<div class="fg" style="margin-bottom:0"><label>Detalle del ajuste solicitado</label>'
+    +'<textarea class="input" id="ajDetalle" rows="3" placeholder="Describí el ajuste que necesitás…" style="resize:vertical"></textarea></div>';
+  document.getElementById('mFoot').innerHTML=
+    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" id="btnConfirmarAjuste" data-egr="'+egr+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 20-7z"/></svg>Enviar solicitud</button>';
+  setTimeout(function(){
+    var b=document.getElementById('btnConfirmarAjuste');
+    if(b)b.addEventListener('click',function(){confirmarAjuste(this.getAttribute('data-egr'));});
+  },0);
+  document.getElementById('modalOv').style.display='flex';
+}
+function confirmarAjuste(egr){
+  var destinatario=document.getElementById('ajDestinatario').value;
+  var motivo=document.getElementById('ajMotivo').value;
+  var detalle=document.getElementById('ajDetalle').value.trim();
+  if(!destinatario){document.getElementById('ajDestinatario').style.borderColor='var(--danger)';return;}
+  if(!motivo){document.getElementById('ajMotivo').style.borderColor='var(--danger)';return;}
+  if(!detalle){document.getElementById('ajDetalle').style.borderColor='var(--danger)';return;}
+  closeModal();
+  var solicitudes=JSON.parse(localStorage.getItem('b_ajustes')||'[]');
+  solicitudes.push({id:uid(),egr:egr,motivo:motivo,detalle:detalle,destinatario:destinatario,by:CU.name,area:CU.area||'',fecha:new Date().toISOString(),resuelto:false});
+  localStorage.setItem('b_ajustes',JSON.stringify(solicitudes));
+  // Feedback visual
+  var btns=document.querySelectorAll('[data-egr="'+egr+'"]');
+  btns.forEach(function(b){
+    b.textContent='✓ Revisión solicitada';
+    b.style.background='var(--success-bg)';b.style.color='#16a34a';b.style.border='1px solid var(--success-b)';
+    b.disabled=true;
+  });
+}
+function pvSort(col){
+  if(_pvState.sc===col){_pvState.sd*=-1;}else{_pvState.sc=col;_pvState.sd=-1;}
+  _pvCols.forEach(function(c){
+    var th=document.getElementById('pvTh-'+c),ar=document.getElementById('pvS-'+c);
+    if(th)th.classList.remove('active');if(ar)ar.textContent='⇅';
+  });
+  var th=document.getElementById('pvTh-'+col),ar=document.getElementById('pvS-'+col);
+  if(th)th.classList.add('active');
+  if(ar)ar.textContent=_pvState.sd===1?'↑':'↓';
+  pvRender();
+}
+
+function resolverAjuste(id){
+  var ajustes=JSON.parse(localStorage.getItem('b_ajustes')||'[]');
+  ajustes=ajustes.map(function(a){
+    if(a.id===id)return Object.assign({},a,{resuelto:true,resueltoPor:CU.name,fechaResolucion:new Date().toISOString()});
+    return a;
+  });
+  localStorage.setItem('b_ajustes',JSON.stringify(ajustes));
+  renderImportar();
+}
+
+function renderGastos(){
+  // Líderes solo ven su área; gerencia y admin ven todo
+  const areaFija=CU.role==='responsable'?CU.area:null;
+  _pvState={f:null,fa:areaFija,sc:null,sd:-1};
+  // Limpiar iContent para evitar IDs duplicados (pvTbody/pvFoot)
+  var ic=$('iContent');if(ic)ic.innerHTML='';
+  var misSol=JSON.parse(localStorage.getItem('b_ajustes')||'[]').filter(function(a){return a.by===CU.name;});
+  var nPend=misSol.filter(function(a){return !a.resuelto;}).length;
+  $('gContent').innerHTML=`
+    <div class="alert alert-info" style="margin-bottom:18px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Revisá los comprobantes a continuación. Si encontrás un dato incorrecto (categoría, monto, período u otro), hacé clic en <strong>Solicitar revisión</strong>. El área administrativa quedará notificada en el sistema.
+    </div>
+    ${misSol.length>0?`
+    <div class="card" style="margin-bottom:18px;border-color:#e9d5ff">
+      <div class="card-hd" style="background:#fdf4ff">
+        <h3 style="color:#7e22ce">Mis solicitudes de revisión</h3>
+        <span class="badge bg-review">${nPend} pendiente${nPend!==1?'s':''} · ${misSol.length} total</span>
+      </div>
+      <div class="card-bd" style="padding:0">
+        <div class="tw"><table>
+          <thead><tr><th>Comprobante</th><th>Motivo</th><th>Enviado a</th><th>Fecha</th><th>Estado</th></tr></thead>
+          <tbody>${misSol.map(function(a){return '<tr>'
+            +'<td style="font-family:monospace;font-size:11px">'+a.egr+'</td>'
+            +'<td><span class="badge bg-yellow">'+a.motivo+'</span></td>'
+            +'<td style="font-size:12px">'+a.destinatario+'</td>'
+            +'<td style="font-size:12px;white-space:nowrap">'+$ts(a.fecha)+'</td>'
+            +'<td>'+(a.resuelto?'<span class="badge bg-green">✓ Resuelta</span>':'<span class="badge bg-yellow">Pendiente</span>')+'</td>'
+            +'</tr>';}).join('')}
+          </tbody>
+        </table></div>
+      </div>
+    </div>` : ''}
+    <div class="card">
+      <div class="card-hd" style="flex-wrap:wrap;gap:10px">
+        <h3>Comprobantes importados</h3>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="font-size:12px;font-weight:600;color:var(--muted)">Categoría:</label>
+          <select id="pvSelect" onchange="pvFilter(this.value||null)" style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;font-weight:500;color:var(--text);background:var(--card);cursor:pointer;outline:none;min-width:200px">
+            <option value="">Todas las categorías (${GDATA.length})</option>
+            ${CATEGORIAS.filter(c=>GDATA.some(g=>g.cat===c)).map(c=>{
+              const cnt=GDATA.filter(g=>g.cat===c).length;
+              return `<option value="${c}">${c} (${cnt})</option>`;
+            }).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="card-bd" style="padding:0">
+        <div class="tw">
+          <table>
+            <thead><tr>
+              <th>#</th>
+              <th class="th-sort" id="pvTh-egr" onclick="pvSort('egr')">Comprobante <span class="sort-arrow" id="pvS-egr">⇅</span></th>
+              <th class="th-sort" id="pvTh-fecha" onclick="pvSort('fecha')">Fecha <span class="sort-arrow" id="pvS-fecha">⇅</span></th>
+              <th class="th-sort" id="pvTh-desc" onclick="pvSort('desc')">Descripción <span class="sort-arrow" id="pvS-desc">⇅</span></th>
+              <th class="th-sort" id="pvTh-per" onclick="pvSort('per')">Período <span class="sort-arrow" id="pvS-per">⇅</span></th>
+              <th class="th-sort" id="pvTh-cat" onclick="pvSort('cat')">Categoría <span class="sort-arrow" id="pvS-cat">⇅</span></th>
+              <th class="th-sort" id="pvTh-monto" onclick="pvSort('monto')">Monto <span class="sort-arrow" id="pvS-monto">⇅</span></th>
+              <th>Hoja</th>
+              <th>Revisión</th>
+            </tr></thead>
+            <tbody id="pvTbody"></tbody>
+          </table>
+        </div>
+        <div class="tfoot-row" id="pvFoot"></div>
+      </div>
+    </div>`;
+  pvRender();
+}
+
+function renderImportar(){
+  _pvState={f:null,fa:null,sc:null,sd:-1};
+  // Limpiar gContent para evitar IDs duplicados (pvTbody/pvFoot)
+  var gc=$('gContent');if(gc)gc.innerHTML='';
+  const si={idle:{bg:'#1a1f36',ic:'⏸',col:'#8892b0'},syncing:{bg:'var(--warning-bg)',ic:'🔄',col:' var(--warning)'},done:{bg:'var(--success-bg)',ic:'✅',col:'var(--success)'},error:{bg:'var(--danger-bg)',ic:'❌',col:'var(--danger)'}}[SYNC.status]||{bg:'var(--bg)',ic:'⏸',col:'var(--muted)'};
+  const valid=GDATA.filter(g=>g.ok).length,inv=GDATA.length-valid;
+  const byH={};SHEET_HOJAS.forEach(h=>{byH[h]=GDATA.filter(g=>g.hoja===h).length;});
+  // Panel de revisiones solicitadas
+  var ajustes=JSON.parse(localStorage.getItem('b_ajustes')||'[]');
+  var pendAdm=ajustes.filter(function(a){return !a.resuelto;}).length;
+  // ── Analytics por área y motivo ───────────────────
+  var byArea={};
+  ajustes.forEach(function(a){
+    var k=a.area||'Sin área';
+    if(!byArea[k])byArea[k]={total:0,pend:0,motivos:{}};
+    byArea[k].total++;
+    if(!a.resuelto)byArea[k].pend++;
+    byArea[k].motivos[a.motivo]=(byArea[k].motivos[a.motivo]||0)+1;
+  });
+  var byMotivo={};
+  ajustes.forEach(function(a){byMotivo[a.motivo]=(byMotivo[a.motivo]||0)+1;});
+  var topMotivo=Object.entries(byMotivo).sort(function(a,b){return b[1]-a[1];});
+  var analisisPanel=ajustes.length===0?'':(`
+    <div class="card" style="margin-bottom:18px;border-left:4px solid #7e22ce">
+      <div class="card-hd">
+        <h3 style="display:flex;align-items:center;gap:7px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7e22ce" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Análisis de revisiones
+        </h3>
+        <span class="badge bg-gray">${ajustes.length} solicitud${ajustes.length!==1?'es':''} totales</span>
+      </div>
+      <div class="card-bd">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Por área</div>
+            ${Object.entries(byArea).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){
+              var area=e[0],d=e[1];
+              var alerta=d.pend>=3;
+              var topMot=Object.entries(d.motivos).sort(function(a,b){return b[1]-a[1];})[0];
+              return '<div style="margin-bottom:10px;padding:10px 12px;background:var(--bg);border-radius:var(--r-sm);border-left:3px solid '+(alerta?'var(--danger)':'#e9d5ff')+'">'
+                +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
+                +'<span style="font-size:13px;font-weight:700">'+area+'</span>'
+                +(alerta?'<span class="badge bg-red">⚠ Recurrente</span>':'<span class="badge bg-review">'+d.pend+' pend.</span>')
+                +'</div>'
+                +'<div style="font-size:12px;color:var(--muted)">'+d.total+' solicitud'+( d.total!==1?'es':'')+(topMot?' · motivo: <strong>'+topMot[0]+'</strong>':'')+'</div>'
+                +'</div>';
+            }).join('')}
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Motivos más frecuentes</div>
+            ${topMotivo.map(function(e,i){
+              var pct2=Math.round(e[1]/ajustes.length*100);
+              return '<div style="margin-bottom:8px">'
+                +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+                +'<span style="font-size:12px;font-weight:600">'+e[0]+'</span>'
+                +'<span style="font-size:12px;color:var(--muted)">'+e[1]+' ('+pct2+'%)</span>'
+                +'</div>'
+                +'<div class="pbar" style="height:6px"><div class="fill" style="width:'+pct2+'%;background:'+(i===0?'var(--danger)':i===1?'var(--warning)':'#7e22ce')+'"></div></div>'
+                +'</div>';
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`);
+  var revPanel=ajustes.length===0?'':(analisisPanel+`
+    <div class="card" style="margin-bottom:18px;border-color:#e9d5ff">
+      <div class="card-hd" style="background:#fdf4ff;flex-wrap:wrap;gap:8px">
+        <h3 style="color:#7e22ce;display:flex;align-items:center;gap:7px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3z"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Revisiones solicitadas
+        </h3>
+        <span class="badge bg-review">${pendAdm} pendiente${pendAdm!==1?'s':''}</span>
+      </div>
+      <div class="card-bd" style="padding:0">
+        <div class="tw"><table>
+          <thead><tr><th>Comprobante</th><th>Motivo</th><th>Detalle</th><th>Solicitado por</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
+          <tbody>${ajustes.map(function(a){
+            var g=GDATA.find(function(x){return x.egr===a.egr;});
+            return '<tr>'
+              +'<td style="white-space:nowrap"><span style="font-family:monospace;font-size:11px">'+a.egr+'</span>'+(g?'<br><span style="font-size:10px;color:var(--muted)">'+(g.desc||'').slice(0,45)+'</span>':'')+'</td>'
+              +'<td><span class="badge bg-yellow">'+a.motivo+'</span></td>'
+              +'<td style="font-size:12px;max-width:180px;white-space:normal">'+a.detalle+'</td>'
+              +'<td style="font-size:12px;white-space:nowrap">'+a.by+(a.area?'<br><span style="font-size:10px;color:var(--muted)">'+a.area+'</span>':'')+'</td>'
+              +'<td style="font-size:12px;white-space:nowrap">'+$ts(a.fecha)+'</td>'
+              +'<td>'+(!a.resuelto?'<span class="badge bg-yellow">Pendiente</span>':'<span class="badge bg-green">Resuelto</span>')+'</td>'
+              +'<td>'+(!a.resuelto
+                ?'<button class="btn btn-sm btn-success" onclick="resolverAjuste(\''+a.id+'\')">✓ Resolver</button>'
+                :'<span style="font-size:11px;color:var(--muted)">'+(a.resueltoPor||'')+'</span>')
+              +'</td>'
+              +'</tr>';
+          }).join('')}
+          </tbody>
+        </table></div>
+      </div>
+    </div>`);
+  $('iContent').innerHTML=revPanel+`
+    <div class="sync-card">
+      <div class="sync-hd">
+        <div class="sync-icon" style="background:${si.bg}"><span>${si.ic}</span></div>
+        <div>
+          <strong style="font-size:15px;color:var(--text)">Estado: <span style="color:${si.col}">${{idle:'En espera',syncing:'Sincronizando…',done:'Sincronizado',error:'Error'}[SYNC.status]}</span></strong>
+          <p style="font-size:13px;color:var(--muted);margin-top:3px">${SYNC.msg}</p>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px">Última sync: ${SYNC.lastSync?$ts(SYNC.lastSync):'Nunca'}</p>
+        </div>
+      </div>
+      <div class="smetrics">
+        <div class="sm"><div class="n">${GDATA.length}</div><div class="l">Registros</div></div>
+        <div class="sm"><div class="n" style="color:var(--success)">${valid}</div><div class="l">Válidos</div></div>
+        <div class="sm"><div class="n" style="color:${inv>0?'var(--danger)':'var(--muted)'}">${inv}</div><div class="l">Con errores</div></div>
+        <div class="sm"><div class="n">${[...new Set(GDATA.map(g=>g.per))].length}</div><div class="l">Períodos</div></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="doSync()" ${SYNC.status==='syncing'?'disabled':''}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>Actualizar ahora</button>
+        <button class="btn btn-ghost" onclick="resetData()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>Restablecer datos pre-cargados</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-hd"><h3>Hojas consultadas</h3><span class="badge bg-gray" style="font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis">${SHEET_ID.slice(0,28)}…</span></div>
+      <div class="card-bd">
+        ${SHEET_HOJAS.map(h=>`<div class="val-item ${byH[h]>0?'ok':'warn'}"><span>${byH[h]>0?'✓':'⚠'}</span><span><strong>${h}</strong> — ${byH[h]} registros (Capital Humano y Marketing)</span></div>`).join('')}
+        <div class="val-item ${inv===0?'ok':'err'}" style="margin-top:10px">
+          <span>${inv===0?'✓':'✗'}</span><span>${inv===0?`Todos los ${GDATA.length} registros son válidos.`:`${inv} registro${inv!==1?'s':''} con errores.`}</span>
+        </div>
+        <div style="margin-top:14px">
+          <p style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">CATEGORÍAS ENCONTRADAS:</p>
+          ${CATEGORIAS.map(c=>`<span class="badge bg-purple" style="margin-right:6px;margin-bottom:4px">${c}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd" style="flex-wrap:wrap;gap:10px">
+        <h3>Registros importados</h3>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="font-size:12px;font-weight:600;color:var(--muted)">Categoría:</label>
+          <select id="pvSelect" onchange="pvFilter(this.value||null)" style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;font-weight:500;color:var(--text);background:var(--card);cursor:pointer;outline:none;min-width:200px">
+            <option value="">Todas las categorías (${GDATA.length})</option>
+            ${CATEGORIAS.filter(c=>GDATA.some(g=>g.cat===c)).map(c=>{
+              const cnt=GDATA.filter(g=>g.cat===c).length;
+              return `<option value="${c}">${c} (${cnt})</option>`;
+            }).join('')}
+          </select>
+          <label style="font-size:12px;font-weight:600;color:var(--muted)">Área:</label>
+          <select id="pvSelectArea" onchange="pvFilterArea(this.value||null)" style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;font-weight:500;color:var(--text);background:var(--card);cursor:pointer;outline:none;min-width:180px">
+            <option value="">Todas las áreas (${GDATA.length})</option>
+            ${AREAS.map(a=>`<option value="${a.name}">${a.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="card-bd" style="padding:0">
+        <div class="tw">
+          <table>
+            <thead><tr>
+              <th>#</th>
+              <th class="th-sort" id="pvTh-egr" onclick="pvSort('egr')">Comprobante <span class="sort-arrow" id="pvS-egr">⇅</span></th>
+              <th class="th-sort" id="pvTh-fecha" onclick="pvSort('fecha')">Fecha <span class="sort-arrow" id="pvS-fecha">⇅</span></th>
+              <th class="th-sort" id="pvTh-desc" onclick="pvSort('desc')">Descripción <span class="sort-arrow" id="pvS-desc">⇅</span></th>
+              <th class="th-sort" id="pvTh-per" onclick="pvSort('per')">Período <span class="sort-arrow" id="pvS-per">⇅</span></th>
+              <th class="th-sort" id="pvTh-cat" onclick="pvSort('cat')">Categoría <span class="sort-arrow" id="pvS-cat">⇅</span></th>
+              <th class="th-sort" id="pvTh-monto" onclick="pvSort('monto')">Monto <span class="sort-arrow" id="pvS-monto">⇅</span></th>
+              <th>Hoja</th>
+              <th>Estado</th>
+            </tr></thead>
+            <tbody id="pvTbody"></tbody>
+          </table>
+        </div>
+        <div class="tfoot-row" id="pvFoot"></div>
+      </div>
+    </div>`;
+  pvRender();
+}
+
+// ── CONTROL PRESUPUESTARIO ────────────────────────
+function renderControl(){
+  const totP=PRES.reduce((s,p)=>s+p.monto,0);
+  const totG=GDATA.reduce((s,g)=>s+g.monto,0);
+
+  // Build period comparison: group gastos by "mes/año" key, compare to presupuesto mensual
+  // per format: "ene/25" → mes="ene", anio=2025
+  const perMap={};
+  GDATA.forEach(g=>{
+    const parts=g.per?g.per.split('/'):[null,null];
+    const mesK=parts[0]||'';
+    const yrShort=parts[1]||'';
+    const anio=yrShort?2000+parseInt(yrShort):null;
+    if(!mesK||!anio)return;
+    const key=g.per;
+    if(!perMap[key])perMap[key]={mesK,anio,ga:0};
+    perMap[key].ga+=g.monto;
+  });
+  // For each period key, find matching presupuesto monthly allocation
+  Object.entries(perMap).forEach(([key,d])=>{
+    const matchPres=PRES.filter(p=>p.anio===d.anio&&p.mensual&&p.mensual[d.mesK]);
+    d.pr=matchPres.reduce((s,p)=>s+(p.mensual[d.mesK]||0),0);
+  });
+
+  const byCat={};
+  CATEGORIAS.forEach(c=>{
+    const ga=GDATA.filter(g=>g.cat===c).reduce((s,x)=>s+x.monto,0);
+    if(ga>0)byCat[c]=ga;
+  });
+
+  // Annual comparison by year
+  const byAnio={};
+  PRES.forEach(p=>{
+    if(!byAnio[p.anio])byAnio[p.anio]={pr:0,ga:0};
+    byAnio[p.anio].pr+=p.monto;
+  });
+  GDATA.forEach(g=>{
+    const parts=g.per?g.per.split('/'):[null,null];
+    const yrShort=parts[1]||'';
+    const anio=yrShort?2000+parseInt(yrShort):null;
+    if(anio&&byAnio[anio])byAnio[anio].ga+=g.monto;
+  });
+
+  $('cContent').innerHTML=`
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-hd"><h3>Resumen Global</h3></div>
+      <div class="card-bd">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+          ${[['Presupuesto Total Anual',totP,'var(--primary)'],['Gasto Real',totG,'var(--success)'],['Desvío',totP-totG,(totP-totG)>=0?'var(--success)':'var(--danger)']].map(([l,v,c])=>`<div style="background:var(--bg);border-radius:var(--r-sm);padding:16px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">${l}</div><div style="font-size:20px;font-weight:800;color:${c}">${v>=0?'':'-'}${$c(Math.abs(v))}</div></div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-hd"><h3>Comparativo por Año</h3></div>
+      <div class="card-bd" style="padding:0">
+        ${Object.keys(byAnio).length===0?`<div class="empty"><p>Cargá presupuestos para ver el comparativo.</p></div>`:`
+        <div class="tw"><table>
+          <thead><tr><th>Año</th><th>Presupuestado</th><th>Ejecutado</th><th>Diferencia</th><th>% Ejec.</th><th>Estado</th></tr></thead>
+          <tbody>${Object.entries(byAnio).sort((a,b)=>a[0]-b[0]).map(([yr,d])=>{
+            const diff=d.pr-d.ga,pp=pct(d.ga,d.pr||1);
+            return`<tr><td><span class="badge bg-blue">${yr}</span></td><td>${$c(d.pr)}</td><td>${$c(d.ga)}</td><td style="color:${diff>=0?'var(--success)':'var(--danger)'};font-weight:700">${diff>=0?'+':''}${$c(diff)}</td><td><div style="display:flex;align-items:center;gap:6px"><div class="pbar" style="width:70px"><div class="fill" style="width:${clamp(pp,0,100)}%;background:${pp>100?'var(--danger)':pp>80?'var(--warning)':'var(--success)'}"></div></div><span style="font-size:12px">${pp}%</span></div></td><td><span class="badge ${pp>100?'bg-red':pp>80?'bg-yellow':'bg-green'}">${pp>100?'Excedido':pp>80?'En riesgo':'Normal'}</span></td></tr>`;
+          }).join('')}</tbody>
+        </table></div>`}
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-hd"><h3>Comparativo Mensual</h3><span class="badge bg-gray" style="font-size:11px">Presupuesto mensual vs. gasto real</span></div>
+      <div class="card-bd" style="padding:0">
+        ${Object.keys(perMap).length===0?`<div class="empty"><p>No hay datos de gastos cargados.</p></div>`:`
+        <div class="tw"><table>
+          <thead><tr><th>Período</th><th>Presup. Mensual</th><th>Ejecutado</th><th>Diferencia</th><th>% Ejec.</th><th>Estado</th></tr></thead>
+          <tbody>${Object.entries(perMap).map(([per,d])=>{
+            const diff=d.pr-d.ga,pp=pct(d.ga,d.pr||1);
+            const noP=d.pr===0;
+            return`<tr><td><span class="badge bg-blue">${per}</span></td><td>${noP?'<span style="color:var(--muted);font-size:12px">Sin pres.</span>':$c(d.pr)}</td><td>${$c(d.ga)}</td><td style="color:${noP?'var(--muted)':diff>=0?'var(--success)':'var(--danger)'};font-weight:700">${noP?'—':((diff>=0?'+':'')+$c(diff))}</td><td><div style="display:flex;align-items:center;gap:6px"><div class="pbar" style="width:70px"><div class="fill" style="width:${clamp(pp,0,100)}%;background:${pp>100?'var(--danger)':pp>80?'var(--warning)':'var(--success)'}"></div></div><span style="font-size:12px">${noP?'—':pp+'%'}</span></div></td><td><span class="badge ${noP?'bg-gray':pp>100?'bg-red':pp>80?'bg-yellow':'bg-green'}">${noP?'Sin pres.':pp>100?'Excedido':pp>80?'En riesgo':'Normal'}</span></td></tr>`;
+          }).join('')}</tbody>
+        </table></div>`}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3>Gastos por Categoría</h3></div>
+      <div class="card-bd" style="padding:0">
+        ${Object.keys(byCat).length===0?`<div class="empty"><p>No hay datos.</p></div>`:`
+        <div class="tw"><table>
+          <thead><tr><th>Categoría</th><th>Cantidad</th><th>Monto</th><th>% del total</th></tr></thead>
+          <tbody>${Object.entries(byCat).map(([c,m])=>{const n=GDATA.filter(g=>g.cat===c).length;const pp=pct(m,totG||1);
+          return`<tr><td><span class="badge bg-purple">${c}</span></td><td>${n}</td><td><strong>${$c(m)}</strong></td><td><div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="flex:1"><div class="fill" style="width:${pp}%;background:var(--primary)"></div></div><span style="font-size:12px;width:35px;text-align:right">${pp}%</span></div></td></tr>`;}).join('')}</tbody>
+        </table></div>`}
+      </div>
+    </div>`;
+}
+
+// ── REPORTES ──────────────────────────────────────
+function renderReportes(){
+  // ── Filtrar datos ──
+  const gFilt=GDATA.filter(g=>{
+    if(!g.per)return false;
+    const yy='20'+g.per.slice(4);
+    if(REP_YEAR&&yy!==REP_YEAR)return false;
+    if(REP_MES&&!g.per.startsWith(REP_MES))return false;
+    if(REP_AREA&&(g.area||'RRHH')!==REP_AREA)return false;
+    if(REP_CAT&&g.cat!==REP_CAT)return false;
+    if(CU.role==='responsable'&&(g.area||'RRHH')!==CU.area)return false;
+    return true;
+  });
+
+  const totG=gFilt.reduce((s,g)=>s+g.monto,0);
+  const nReg=gFilt.length;
+
+  // Top categoría
+  const byCat={};
+  gFilt.forEach(g=>{if(g.cat)byCat[g.cat]=(byCat[g.cat]||0)+g.monto;});
+  const topCat=Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
+
+  // Por período
+  const byPer={};
+  gFilt.forEach(g=>{if(g.per)byPer[g.per]=(byPer[g.per]||0)+g.monto;});
+  const periodosSorted=Object.keys(byPer).sort((a,b)=>{
+    const [ma,ya]=a.split('/');const [mb,yb]=b.split('/');
+    const idx=k=>MESES.findIndex(m=>m.k===k);
+    return ya!==yb?ya.localeCompare(yb):idx(ma)-idx(mb);
+  });
+  const avgMes=periodosSorted.length?Math.round(totG/periodosSorted.length):0;
+
+  // Por área
+  const byArea={};
+  gFilt.forEach(g=>{const a=g.area||'RRHH';byArea[a]=(byArea[a]||0)+g.monto;});
+
+  // ── Gráfico de barras SVG ──
+  const maxBar=Math.max(...periodosSorted.map(p=>byPer[p]),1);
+  const BAR_W=44,BAR_GAP=8,CH=130,CPB=28;
+  const nBars=periodosSorted.length;
+  const chartW=Math.max(nBars*(BAR_W+BAR_GAP)+20,420);
+  const bars=periodosSorted.map((p,i)=>{
+    const v=byPer[p];
+    const bh=Math.max(Math.round((v/maxBar)*CH),4);
+    const x=10+i*(BAR_W+BAR_GAP);
+    const y=CH-bh;
+    const lbl=v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?Math.round(v/1000)+'k':v;
+    return`<rect x="${x}" y="${y}" width="${BAR_W}" height="${bh}" rx="4" fill="#1D4856" opacity="0.85"/>
+    <text x="${x+BAR_W/2}" y="${CH+16}" text-anchor="middle" font-size="9" fill="#999" font-family="Nunito,sans-serif">${p}</text>
+    <text x="${x+BAR_W/2}" y="${y-5}" text-anchor="middle" font-size="9" fill="#1D4856" font-weight="700" font-family="Nunito,sans-serif">${lbl}</text>`;
+  }).join('');
+  const barChart=nBars
+    ?`<div style="overflow-x:auto"><svg viewBox="0 0 ${chartW} ${CH+CPB+10}" style="width:100%;min-width:${Math.min(chartW,540)}px;height:auto;display:block">${bars}</svg></div>`
+    :`<div class="empty"><p>Sin datos para el período seleccionado.</p></div>`;
+
+  // ── Tabla categorías ──
+  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,monto],i)=>{
+    const pp=pct(monto,totG||1);
+    return`<tr>
+      <td style="font-size:12px;color:var(--muted);width:28px">${i+1}</td>
+      <td><span class="badge bg-purple">${cat}</span></td>
+      <td style="text-align:center">${gFilt.filter(g=>g.cat===cat).length}</td>
+      <td><div style="display:flex;align-items:center;gap:7px"><div class="pbar" style="width:72px"><div class="fill" style="width:${pp}%;background:var(--primary)"></div></div><span style="font-size:11px;width:30px;text-align:right;color:var(--muted)">${pp}%</span></div></td>
+      <td style="text-align:right"><strong>${$c(monto)}</strong></td>
+    </tr>`;
+  }).join('');
+
+  // ── Tabla por período ──
+  const perRows=periodosSorted.map(p=>{
+    const rows=gFilt.filter(g=>g.per===p);
+    const m=rows.reduce((s,x)=>s+x.monto,0);
+    const pp=pct(m,totG||1);
+    const areas=[...new Set(rows.map(g=>g.area||'RRHH'))];
+    return`<tr>
+      <td><span class="badge bg-blue">${p}</span></td>
+      <td>${areas.map(a=>`<span class="badge ${a==='RRHH'?'bg-green':'bg-cyan'}" style="margin-right:3px">${a}</span>`).join('')}</td>
+      <td style="text-align:center">${rows.length}</td>
+      <td><div style="display:flex;align-items:center;gap:7px"><div class="pbar" style="width:72px"><div class="fill" style="width:${pp}%;background:var(--success)"></div></div><span style="font-size:11px;width:30px;text-align:right;color:var(--muted)">${pp}%</span></div></td>
+      <td style="text-align:right"><strong>${$c(m)}</strong></td>
+    </tr>`;
+  }).join('');
+
+  // ── Filtros disponibles ──
+  const years=[...new Set(GDATA.map(g=>g.per?'20'+g.per.slice(4):null).filter(Boolean))].sort().reverse();
+  const areasAvail=[...new Set(GDATA.map(g=>g.area||'RRHH'))];
+  const catsAvail=[...new Set(GDATA.map(g=>g.cat).filter(Boolean))].sort();
+  const hayFiltros=REP_YEAR||REP_MES||REP_AREA||REP_CAT;
+
+  $('rContent').innerHTML=`
+    <!-- Filtros -->
+    <div class="fbar" style="margin-bottom:20px">
+      <div class="fbar-label">Filtrar</div>
+      <select class="input" style="width:auto;min-width:115px" onchange="REP_YEAR=this.value;renderReportes()">
+        <option value="">Todos los años</option>
+        ${years.map(y=>`<option value="${y}"${REP_YEAR===y?' selected':''}>${y}</option>`).join('')}
+      </select>
+      <select class="input" style="width:auto;min-width:140px" onchange="REP_MES=this.value;renderReportes()">
+        <option value="">Todos los meses</option>
+        ${MESES.map(m=>`<option value="${m.k}"${REP_MES===m.k?' selected':''}>${m.l}</option>`).join('')}
+      </select>
+      <select class="input" style="width:auto;min-width:130px" onchange="REP_AREA=this.value;renderReportes()">
+        <option value="">Todas las áreas</option>
+        ${areasAvail.map(a=>`<option value="${a}"${REP_AREA===a?' selected':''}>${a}</option>`).join('')}
+      </select>
+      <select class="input" style="width:auto;min-width:200px" onchange="REP_CAT=this.value;renderReportes()">
+        <option value="">Todas las categorías</option>
+        ${catsAvail.map(c=>`<option value="${c}"${REP_CAT===c?' selected':''}>${c}</option>`).join('')}
+      </select>
+      ${hayFiltros?`<button class="btn btn-ghost btn-sm" onclick="REP_YEAR='';REP_MES='';REP_AREA='';REP_CAT='';renderReportes()">✕ Limpiar</button>`:''}
+    </div>
+
+    <!-- KPI cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+      <div class="metric-card c-blue">
+        <div class="mc-icon">💸</div>
+        <div class="mc-label">Total Gastado</div>
+        <div class="mc-value" style="font-size:${totG>9999999?'17px':'24px'}">${$c(totG)}</div>
+        <div class="mc-sub">${nReg} comprobante${nReg!==1?'s':''}</div>
+      </div>
+      <div class="metric-card c-green">
+        <div class="mc-icon">📅</div>
+        <div class="mc-label">Períodos con gasto</div>
+        <div class="mc-value">${periodosSorted.length}</div>
+        <div class="mc-sub">Prom. mensual ${$c(avgMes)}</div>
+      </div>
+      <div class="metric-card c-orange">
+        <div class="mc-icon">🏷️</div>
+        <div class="mc-label">Categoría principal</div>
+        <div class="mc-value" style="font-size:13px;font-weight:700;line-height:1.35;margin:5px 0 2px">${topCat?topCat[0]:'—'}</div>
+        <div class="mc-sub">${topCat?$c(topCat[1]):''}</div>
+      </div>
+      <div class="metric-card c-purple">
+        <div class="mc-icon">🏢</div>
+        <div class="mc-label">Distribución por área</div>
+        <div class="mc-value" style="font-size:13px;font-weight:700;line-height:1.5;margin:5px 0 2px">
+          ${Object.entries(byArea).map(([a,m])=>`${a}: ${pct(m,totG||1)}%`).join('<br>')||'—'}
+        </div>
+      </div>
+    </div>
+
+    <!-- Gráfico de barras mensual -->
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-hd">
+        <h3>Evolución mensual de gastos</h3>
+        <span class="badge bg-gray">${periodosSorted.length} período${periodosSorted.length!==1?'s':''}</span>
+      </div>
+      <div class="card-bd">${barChart}</div>
+    </div>
+
+    <!-- Tablas categoría + período -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+      <div class="card">
+        <div class="card-hd"><h3>Por Categoría</h3><span class="badge bg-purple">${Object.keys(byCat).length}</span></div>
+        <div class="card-bd" style="padding:0">
+          ${catRows?`<div class="tw"><table>
+            <thead><tr><th>#</th><th>Categoría</th><th style="text-align:center">Comp.</th><th>% del total</th><th style="text-align:right">Monto</th></tr></thead>
+            <tbody>${catRows}</tbody>
+            <tfoot><tr style="background:var(--bg)"><td colspan="4" style="padding:9px 14px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Total</td><td style="padding:9px 14px;text-align:right;font-weight:800;font-size:13px">${$c(totG)}</td></tr></tfoot>
+          </table></div>`:`<div class="empty"><p>Sin datos.</p></div>`}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3>Por Período</h3><span class="badge bg-blue">${periodosSorted.length}</span></div>
+        <div class="card-bd" style="padding:0">
+          ${perRows?`<div class="tw"><table>
+            <thead><tr><th>Período</th><th>Área</th><th style="text-align:center">Comp.</th><th>% del total</th><th style="text-align:right">Monto</th></tr></thead>
+            <tbody>${perRows}</tbody>
+            <tfoot><tr style="background:var(--bg)"><td colspan="4" style="padding:9px 14px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Total</td><td style="padding:9px 14px;text-align:right;font-weight:800;font-size:13px">${$c(totG)}</td></tr></tfoot>
+          </table></div>`:`<div class="empty"><p>Sin datos.</p></div>`}
+        </div>
+      </div>
+    </div>
+
+    <!-- Presupuesto vs Real -->
+    ${PRES.length>0?presVsRealSection():''}
+
+    <!-- Exportar -->
+    <div class="card">
+      <div class="card-hd"><h3>Exportar datos</h3></div>
+      <div class="card-bd" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-secondary" onclick="exportCSV('gastos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar Gastos (${GDATA.length} registros)
+        </button>
+        <button class="btn btn-secondary" onclick="exportCSV('presupuestos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar Presupuestos (${PRES.length} registros)
+        </button>
+        <span style="font-size:12px;color:var(--muted)">Formato CSV · compatible con Excel</span>
+      </div>
+    </div>`;
+}
+
+function presVsRealSection(){
+  const rows=PRES.map(p=>{
+    const gastos=GDATA.filter(g=>{
+      const yy=g.per?'20'+g.per.slice(4):'';
+      return (g.area||'RRHH')===p.area&&String(p.anio)===yy;
+    });
+    const real=gastos.reduce((s,g)=>s+g.monto,0);
+    const ejec=pct(real,p.monto||1);
+    const saldo=p.monto-real;
+    return{p,real,ejec,saldo};
+  });
+  if(!rows.length)return'';
+  return`<div class="card" style="margin-bottom:18px">
+    <div class="card-hd"><h3>Presupuesto vs. Real por Área</h3><span class="badge bg-gray">${rows.length} presupuesto${rows.length!==1?'s':''}</span></div>
+    <div class="card-bd" style="padding:0"><div class="tw"><table>
+      <thead><tr><th>Área</th><th>Año</th><th>Presupuesto</th><th>Gasto real</th><th>Ejecución</th><th>Desvío</th><th>Estado</th></tr></thead>
+      <tbody>${rows.map(({p,real,ejec,saldo})=>`<tr>
+        <td><span class="adot" style="background:${aCol(p.area)}"></span>${p.area}</td>
+        <td><span class="badge bg-blue">${p.anio}</span></td>
+        <td>${$c(p.monto)}</td>
+        <td><strong>${$c(real)}</strong></td>
+        <td><div style="display:flex;align-items:center;gap:7px">
+          <div class="pbar" style="width:68px"><div class="fill" style="width:${Math.min(ejec,100)}%;background:${ejec<=80?'var(--success)':ejec<=100?'var(--warning)':'var(--danger)'}"></div></div>
+          <span style="font-size:12px;font-weight:700;color:${ejec<=80?'var(--success)':ejec<=100?'var(--warning)':'var(--danger)'}">${ejec}%</span>
+        </div></td>
+        <td style="color:${saldo>=0?'var(--success)':'var(--danger)'};font-weight:700">${saldo>=0?'+':''}${$c(saldo)}</td>
+        <td><span class="badge ${p.estado==='Activo'?'bg-green':p.estado==='Borrador'?'bg-gray':p.estado==='Cerrado'?'bg-red':'bg-orange'}">${p.estado||'—'}</span></td>
+      </tr>`).join('')}</tbody>
+    </table></div></div>
+  </div>`;
+}
+function exportCSV(type){
+  let csv,fname;
+  if(type==='gastos'){
+    csv='Comprobante,Fecha,Descripcion,Periodo,Categoria,Monto,Hoja,Valido\n'+GDATA.map(g=>`"${g.egr}","${g.fecha}","${g.desc}","${g.per}","${g.cat||''}","${g.monto}","${g.hoja}","${g.ok?'Si':'No'}"`).join('\n');
+    fname='gastos_capital_humano.csv';
+  }else{
+    csv='Area,Anio,Monto Anual,Tipo,Estado,Distribucion,Ene,Feb,Mar,Abr,May,Jun,Jul,Ago,Sep,Oct,Nov,Dic,Descripcion\n'+PRES.map(p=>{const mn=p.mensual||{};return`"${p.area}","${p.anio}","${p.monto}","${p.tipo||''}","${p.estado||''}","${p.distribucion||''}","${mn.ene||0}","${mn.feb||0}","${mn.mar||0}","${mn.abr||0}","${mn.may||0}","${mn.jun||0}","${mn.jul||0}","${mn.ago||0}","${mn.sep||0}","${mn.oct||0}","${mn.nov||0}","${mn.dic||0}","${p.desc||''}"`;}).join('\n');
+    fname='presupuestos.csv';
+  }
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();
+}
+
+// ── CONFIGURACIÓN ─────────────────────────────────
+const ROLES_MAP=[
+  {value:'admin',      label:'Administrador'},
+  {value:'gerencia',   label:'Dirección de Operaciones'},
+  {value:'responsable',label:'Responsable de Área'},
+];
+function rlabelForRole(r){return(ROLES_MAP.find(x=>x.value===r)||{label:r}).label;}
+
+function renderConfig(){
+  const isAdmin=CU.role==='admin';
+  $('cfContent').innerHTML=`
+    <div>
+      <div class="card">
+        <div class="card-hd">
+          <h3>Usuarios <span class="badge bg-gray" style="margin-left:6px">${USERS.length}</span></h3>
+          ${isAdmin?`<button class="btn btn-primary btn-sm" onclick="openUserModal(null)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Agregar usuario
+          </button>`:''}
+        </div>
+        <div class="card-bd" style="padding:0">
+          <table>
+            <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Área</th>${isAdmin?'<th style="width:140px;text-align:center">Acciones</th>':''}</tr></thead>
+            <tbody>${USERS.map(u=>`<tr>
+              <td><div style="display:flex;align-items:center;gap:8px">
+                <div class="avatar" style="background:${avBg(u)};width:26px;height:26px;font-size:10px">${u.init}</div>
+                <span style="font-weight:600">${u.name}</span>
+              </div></td>
+              <td style="font-size:12px;color:var(--muted)">${u.email}</td>
+              <td><span class="badge ${u.role==='admin'?'bg-purple':u.role==='gerencia'?'bg-blue':'bg-gray'}">${u.rlabel}</span></td>
+              <td style="font-size:12.5px">${u.area||'—'}</td>
+              ${isAdmin?`<td style="text-align:center;white-space:nowrap">
+                <button class="btn btn-sm btn-secondary" onclick="openUserModal(${u.id})" style="margin-right:4px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
+                  Modificar
+                </button>
+                <button class="btn btn-sm" onclick="deleteUser(${u.id})" style="background:var(--danger-bg);color:var(--danger);border:1.5px solid var(--danger-b)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                  Eliminar
+                </button>
+              </td>`:''}
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── GESTIÓN DE USUARIOS ────────────────────────────
+function openUserModal(userId){
+  const isNew=userId===null;
+  const u=isNew
+    ?{id:null,name:'',email:'',role:'responsable',area:'',pw:'brugali123'}
+    :USERS.find(x=>x.id===userId);
+  if(!u)return;
+  $('mTitle').textContent=isNew?'Agregar Usuario':'Modificar Usuario';
+  const areaOpts='<option value="">— Sin asignar —</option>'+AREAS.map(a=>'<option value="'+a.name+'"'+(u.area===a.name?' selected':'')+'>'+a.name+'</option>').join('');
+  const roleOpts=ROLES_MAP.map(r=>'<option value="'+r.value+'"'+(u.role===r.value?' selected':'')+'>'+r.label+'</option>').join('');
+  const pwSection=isNew
+    ?'<div class="fg" style="margin-top:14px;margin-bottom:0"><label>Contraseña inicial</label><input class="input" id="uPw" type="text" value="brugali123" placeholder="Contraseña"/></div>'
+    :'<div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Contraseña</div><label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;margin-bottom:10px"><input type="checkbox" id="uResetPw" onchange="togglePwField()" style="width:15px;height:15px;accent-color:var(--primary);cursor:pointer"/>Blanquear contraseña</label><div id="uPwField" style="display:none"><input class="input" id="uPw" type="text" value="brugali123" placeholder="Nueva contraseña"/><p style="font-size:11px;color:var(--muted);margin-top:5px">El usuario usará esta contraseña en su próximo ingreso.</p></div></div>';
+  $('mBody').innerHTML=`
+    <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:18px 20px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:14px">Datos del usuario</div>
+      <div class="form-grid">
+        <div class="fg" style="margin-bottom:0"><label>Nombre completo</label><input class="input" id="uName" type="text" value="${u.name}" placeholder="Ej: María García"/></div>
+        <div class="fg" style="margin-bottom:0"><label>Email <span style="font-size:10px;font-weight:600;background:var(--primary-light);color:var(--primary);padding:1px 6px;border-radius:20px;margin-left:4px">ACCESO AL SISTEMA</span></label><input class="input" id="uEmail" type="email" value="${u.email}" placeholder="mail@brugali.com.ar"/></div>
+        <div class="fg" style="margin-bottom:0"><label>Rol</label><select class="input" id="uRole">${roleOpts}</select></div>
+        <div class="fg" style="margin-bottom:0"><label>Área</label><select class="input" id="uArea">${areaOpts}</select></div>
+      </div>
+      ${pwSection}
+    </div>
+    <div id="uErr" style="color:var(--danger);font-size:12px;margin-top:8px;display:none"></div>`;
+  $('mFoot').innerHTML=`
+    <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveUser(${userId === null ? 'null' : userId})">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      ${isNew?'Agregar':'Guardar cambios'}
+    </button>`;
+  $('modalOv').style.display='flex';
+}
+
+function togglePwField(){
+  var cb=$('uResetPw'),f=$('uPwField');
+  if(cb&&f)f.style.display=cb.checked?'block':'none';
+}
+
+function saveUser(userId){
+  var name=($('uName').value||'').trim();
+  var email=($('uEmail').value||'').trim();
+  var role=$('uRole').value;
+  var area=$('uArea').value;
+  var errEl=$('uErr');
+  if(!name||!email){errEl.textContent='Nombre y email son obligatorios.';errEl.style.display='block';return;}
+  errEl.style.display='none';
+  var rlabel=rlabelForRole(role);
+  var initials=name.split(' ').filter(Boolean).slice(0,2).map(function(w){return w[0].toUpperCase();}).join('');
+  if(userId===null){
+    var newId=Math.max.apply(null,[0].concat(USERS.map(function(u){return u.id;})))+1;
+    var pw=($('uPw')?($('uPw').value.trim()||'brugali123'):'brugali123');
+    USERS.push({id:newId,name:name,init:initials,email:email,role:role,rlabel:rlabel,area:area,pw:pw});
+  }else{
+    var idx=USERS.findIndex(function(u){return u.id===userId;});
+    if(idx<0)return;
+    var resetPw=$('uResetPw')&&$('uResetPw').checked;
+    var newPw=resetPw?(($('uPw').value.trim()||'brugali123')):USERS[idx].pw;
+    USERS[idx]=Object.assign({},USERS[idx],{name:name,init:initials,email:email,role:role,rlabel:rlabel,area:area,pw:newPw});
+    if(CU&&CU.id===userId){CU=USERS[idx];renderTbUser();renderSidebar();}
+  }
+  closeModal();
+  renderConfig();
+}
+
+function deleteUser(userId){
+  var u=USERS.find(function(x){return x.id===userId;});
+  if(!u)return;
+  if(u.id===CU.id){alert('No podés eliminar tu propio usuario.');return;}
+  if(!confirm('¿Eliminar al usuario "'+u.name+'"? Esta acción no se puede deshacer.'))return;
+  var idx=USERS.findIndex(function(x){return x.id===userId;});
+  if(idx>=0)USERS.splice(idx,1);
+  renderConfig();
+}
+
+// ── SHEET SYNC ────────────────────────────────────
+function normalizarCategoria(raw){
+  if(!raw)return'';
+  const r=raw.trim();
+  const mapa={
+    // Capital Humano
+    'Motivacion':'Motivación','motivacion':'Motivación','MOTIVACION':'Motivación',
+    'Insumos Varios':'Insumos varios','INSUMOS VARIOS':'Insumos varios',
+    'uniformes':'Uniformes','UNIFORMES':'Uniformes',
+    'capacitaciones':'Capacitaciones','CAPACITACIONES':'Capacitaciones',
+    'Gs ingreso Personal':'Gs. Ingreso Personal','GS INGRESO PERSONAL':'Gs. Ingreso Personal',
+    'Soft de Gestion':'Soft de gestion','SOFT DE GESTION':'Soft de gestion',
+    'reclutamiento':'Reclutamiento','RECLUTAMIENTO':'Reclutamiento',
+    'varios':'Varios','VARIOS':'Varios',
+    // Marketing
+    'Plataforma y sistema de marketing':'Plataforma y sistema de marketing',
+    'plataforma y sistema de marketing':'Plataforma y sistema de marketing',
+    'Anuncios y Publicidad Digital':'Anuncios y Publicidad Digital',
+    'anuncios y publicidad digital':'Anuncios y Publicidad Digital',
+    'Produccion y contenido':'Producción y contenido',
+    'produccion y contenido':'Producción y contenido',
+    'Viaticos':'Viáticos','viaticos':'Viáticos','VIATICOS':'Viáticos',
+    'Honorarios':'Honorarios','honorarios':'Honorarios','HONORARIOS':'Honorarios',
+    'Gastos varios':'Gastos varios','gastos varios':'Gastos varios',
+    // Valores sin clasificar o de hoja artículos
+    '#N/A':'Gastos varios',
+    '2. Gastos de marketing':'Gastos varios',
+  };
+  return mapa[r]||r;
+}
+// Load one sheet via JSONP (works from file:// — no CORS issues, sends Google auth cookies)
+function gvizJsonp(sheetName,tq){
+  return new Promise((resolve,reject)=>{
+    // Ensure google.visualization.Query.setResponse exists
+    if(!window.google)window.google={};
+    if(!window.google.visualization)window.google.visualization={};
+    if(!window.google.visualization.Query)window.google.visualization.Query={};
+    const prev=window.google.visualization.Query.setResponse;
+    let settled=false;
+    const timer=setTimeout(()=>{
+      if(settled)return;settled=true;
+      window.google.visualization.Query.setResponse=prev;
+      reject(new Error('Timeout: '+sheetName));
+    },25000);
+    window.google.visualization.Query.setResponse=function(resp){
+      if(settled)return;settled=true;
+      clearTimeout(timer);
+      window.google.visualization.Query.setResponse=prev;
+      if(resp.status==='error')reject(new Error((resp.errors&&resp.errors[0]&&resp.errors[0].detailed_message)||'Error gviz'));
+      else resolve(resp.table);
+    };
+    const s=document.createElement('script');
+    s.onerror=()=>{if(settled)return;settled=true;clearTimeout(timer);window.google.visualization.Query.setResponse=prev;reject(new Error('Script error: '+sheetName));};
+    s.src='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&sheet='+encodeURIComponent(sheetName)+(tq?'&tq='+encodeURIComponent(tq):'')+'&_='+Date.now();
+    document.head.appendChild(s);
+  });
+}
+// Convierte "2025-01-15" o "Date(2025,0,15)" (gviz, mes 0-indexed) → "ene/25"
+function fechaToPer(fechaStr){
+  if(!fechaStr)return'';
+  // Formato gviz: "Date(2025,0,10)" — mes es 0-indexed
+  const dm=fechaStr.match(/Date\((\d+),(\d+),\d+\)/);
+  if(dm)return((MESES[+dm[2]]&&MESES[+dm[2]].k)||'')+'/'+String(+dm[1]).slice(2);
+  // Formato ISO: "2025-01-15"
+  const m=fechaStr.match(/(\d{4})-(\d{2})/);
+  if(m){const y=m[1].slice(2);const mo=parseInt(m[2],10)-1;return((MESES[mo]&&MESES[mo].k)||'')+'/'+y;}
+  // Ya viene en formato "ene/25" → devolver tal cual
+  if(/^[a-z]{3}\/\d{2}$/i.test(fechaStr.trim()))return fechaStr.trim().toLowerCase();
+  return'';
+}
+function parseGvizTable(table,sheetName){
+  if(!table||!table.cols||!table.rows)return[];
+  const normH=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  const h=table.cols.map(c=>normH(c.label||''));
+  const types=table.cols.map(c=>(c.type||'').toLowerCase());
+  console.log('[gviz] "'+sheetName+'" cols:',h,'types:',types,'totalRows:',table.rows.length);
+  const getV=(row,i)=>{if(i<0||!row.c||!row.c[i])return'';const cell=row.c[i];return cell===null?'':String(cell.v!==null&&cell.v!==undefined?cell.v:(cell.f||'')).trim();};
+  // Detect columns by header label first, then fall back to column type
+  let iEg=h.findIndex(x=>x.includes('comprobante')||x.startsWith('egr'));
+  let iFe=h.findIndex(x=>x.startsWith('fecha'));
+  if(iFe<0)iFe=types.findIndex(t=>t==='date'||t==='datetime');
+  const iObs=h.findIndex(x=>x.includes('observacion'));
+  let iDe=iObs>=0?iObs:h.findIndex(x=>x.includes('descripcion')||x.includes('concepto')||x.includes('detalle'));
+  let iIm=h.findIndex(x=>x==='importe'||x.includes('importe neto')||x.includes('importe total'));
+  if(iIm<0)iIm=h.findIndex(x=>x.includes('importe'));
+  if(iIm<0)iIm=h.findIndex(x=>x==='total'||x==='monto'||x==='valor'||x.includes('total neto'));
+  // Last resort: use the LAST numeric column (for sheets with empty headers like egresos de fondos)
+  if(iIm<0){const numCols=types.reduce((a,t,i)=>t==='number'?[...a,i]:a,[]);if(numCols.length)iIm=numCols[numCols.length-1];}
+  let iPe=h.findIndex(x=>x.includes('periodo'));
+  let iC1=h.findIndex(x=>x.includes('clasificacion')&&(x.endsWith('1')||x.includes(' 1')));
+  let iCp=h.findIndex(x=>x.includes('clasificacion')&&x.includes('presupuesto'));
+  // Fallback: scan data rows for area keywords to locate classification column
+  const areaKw=['capital humano','capital hu','marketing','comunicaci'];
+  if(iC1<0){
+    const testRow=(table.rows||[]).find(r=>r.c&&r.c.some(c=>c&&areaKw.some(k=>String(c.v||'').toLowerCase().includes(k))));
+    if(testRow)iC1=testRow.c.findIndex(c=>c&&areaKw.some(k=>String(c.v||'').toLowerCase().includes(k)));
+  }
+  if(iC1<0)iC1=h.findIndex(x=>x.includes('clasificacion'));
+  // "clasificacion para presupuesto" fallback: last clasificacion column
+  if(iCp<0){const allC=h.reduce((a,x,i)=>x.includes('clasificacion')?[...a,i]:a,[]);if(allC.length>1)iCp=allC[allC.length-1];}
+  // For egresos de fondos (sin iDe): usar la columna string después de iC1
+  if(iDe<0&&iC1>=0)iDe=types.findIndex((t,i)=>i>iC1&&t==='string');
+  console.log('[gviz] "'+sheetName+'" iC1='+iC1+'('+h[iC1]+') iCp='+iCp+'('+h[iCp]+') iIm='+iIm+'('+h[iIm]+') iPe='+iPe+'('+h[iPe]+') iFe='+iFe+'('+h[iFe]+')');
+  if(iC1<0||iIm<0){console.warn('[gviz] "'+sheetName+'" columnas no encontradas — abortando');return[];}
+  // parse AR number format "1.234,56" → 1234.56
+  const parseMonto=s=>{if(!s)return 0;const hasCommaDecimal=/,\d{1,2}$/.test(s.trim());return hasCommaDecimal?parseFloat(s.replace(/\./g,'').replace(',','.')):parseFloat(s.replace(/[^0-9.]/g,''))||0;};
+  const out=[];
+  table.rows.forEach((row,i)=>{
+    // Saltar filas vacías (sin datos)
+    if(!row.c||row.c.every(c=>!c||c.v===null||c.v===''||c.v===undefined))return;
+    const c1=getV(row,iC1).toLowerCase();
+    const cp2=iCp>=0?(getV(row,iCp)||'').toLowerCase():'';
+    const isCapHum=c1.includes('capital humano')||c1.includes('capital hu')||cp2.includes('capital humano')||cp2.includes('capital hu');
+    const isMkt=c1.includes('marketing')||cp2.includes('marketing')||c1.includes('comunicaci')||cp2.includes('comunicaci');
+    if(!isCapHum&&!isMkt)return;
+    const area=isCapHum?'RRHH':'Marketing';
+    const catRaw=iCp>=0?getV(row,iCp):'';
+    const cat=normalizarCategoria(catRaw)||catRaw||'Gastos varios';
+    const montoStr=getV(row,iIm);
+    const m=parseMonto(montoStr);
+    if(!m)return;
+    // Parsear fecha
+    let fe=getV(row,iFe);
+    const dm=fe.match(/Date\((\d+),(\d+),(\d+)\)/);
+    if(dm){const[,y,mo,d]=dm;fe=y+'-'+String(+mo+1).padStart(2,'0')+'-'+String(+d).padStart(2,'0');}
+    else fe=parseFecha(fe);
+    // Periodo: desde columna dedicada (puede ser "Date()" gviz), o derivado de la fecha
+    let per=iPe>=0?fechaToPer(getV(row,iPe)):fechaToPer(fe);
+    if(!per)per=fechaToPer(fe); // fallback si la columna de periodo está vacía
+    if(!per)return;
+    out.push({egr:getV(row,iEg)||'R'+i,fecha:fe,desc:getV(row,iDe),monto:m,per,cat,area,hoja:sheetName,ok:true});
+  });
+  console.log('[gviz] "'+sheetName+'" → '+out.length+' registros (RRHH:'+out.filter(r=>r.area==='RRHH').length+' Mkt:'+out.filter(r=>r.area==='Marketing').length+')');
+  return out;
+}
+async function doSync(){
+  SYNC.status='syncing';SYNC.msg='Conectando con Google Sheets…';
+  renderSyncPill();if(CS==='importar')renderImportar();
+  try{
+    const all=[];
+    for(const hoja of SHEET_HOJAS){
+      SYNC.msg='Leyendo: "'+hoja+'"…';if(CS==='importar')renderImportar();
+      const table=await gvizJsonp(hoja,SHEET_TQ[hoja]||'');
+      const rows=parseGvizTable(table,hoja);
+      all.push(...rows);
+    }
+    if(!all.length)throw new Error('No se encontraron registros en Google Sheets.');
+    // El sync trae RRHH + Marketing de las hojas → reemplazar todo
+    GDATA=all;
+    const rrhh=all.filter(r=>(r.area||'RRHH')==='RRHH').length;
+    const mkt=all.filter(r=>r.area==='Marketing').length;
+    SYNC.status='done';SYNC.lastSync=new Date().toISOString();
+    SYNC.msg=all.length+' registros importados (RRHH: '+rrhh+' · Marketing: '+mkt+')';SYNC.count=GDATA.length;saveLS();
+  }catch(e){
+    SYNC.status='error';SYNC.msg='Error: '+(e.message||'Sin conexión.');console.warn('[sync]',e);
+  }
+  renderSyncPill();
+  if(CS==='importar')renderImportar();
+  if(CS==='dashboard')renderDash();
+  if(CS==='control')renderControl();
+}
+function resetData(){if(!confirm('¿Restablecer los datos pre-cargados?'))return;GDATA=[...SHEET_RAW];SYNC={status:'idle',lastSync:null,msg:'Datos pre-cargados restablecidos.',count:SHEET_RAW.length};saveLS();renderSyncPill();if(CS==='importar')renderImportar();}
+function parseCSV(t){const rows=[];let row=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'&&t[i+1]==='"'){f+='"';i++;}else if(c==='"'){q=false;}else f+=c;}else{if(c==='"'){q=true;}else if(c===','){row.push(f);f='';}else if(c==='\n'||c==='\r'){row.push(f);f='';if(row.some(x=>x))rows.push(row);row=[];if(c==='\r'&&t[i+1]==='\n')i++;}else f+=c;}}if(f||row.length){row.push(f);if(row.some(x=>x))rows.push(row);}return rows;}
+function parseFecha(s){if(!s)return'';const m=s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);if(!m)return s;const y=m[3].length===2?'20'+m[3]:m[3];return`${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;}
+
+// ── MODAL ─────────────────────────────────────────
+function closeModal(){$('modalOv').style.display='none';}
+
+// ── BOOT ──────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
