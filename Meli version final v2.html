@@ -2120,11 +2120,14 @@ var CF_SIMCAT={
   'Administración y Finanzas':[['Honorarios',3100000],['Servicios',1700000],['Impuestos y tasas',1400000],['Software',700000]],
   'Dirección':[['Honorarios',2200000],['Viáticos',900000],['Varios',600000]],
   'Compras':[['Insumos varios',2400000],['Fletes',1200000],['Software',500000]],
-  'Logística':[['Fletes',3800000],['Mantenimiento',1400000],['Combustible',1100000]]
+  'Logística':[['Fletes',3800000],['Mantenimiento',1400000],['Combustible',1100000]],
+  'RRHH':[['Comida',850000],['Capacitaciones',620000],['Uniformes',480000],['Reclutamiento',390000],['Varios',280000]],
+  'Marketing':[['Publicidad digital',3200000],['Diseño y contenido',1800000],['Eventos',1400000],['Materiales',900000],['Varios',600000]]
 };
 function cfCatArea(area){
   if(typeof GDATA!=='undefined'){
-    var byc={}; GDATA.filter(function(g){return g.area===area && g.per && g.per.slice(4)==='26';}).forEach(function(g){byc[g.cat]=(byc[g.cat]||0)+g.monto;});
+    var byc={};
+    GDATA.filter(function(g){return (g.area||'RRHH')===area;}).forEach(function(g){byc[g.cat]=(byc[g.cat]||0)+g.monto;});
     var ent=Object.entries(byc).sort(function(a,b){return b[1]-a[1];});
     if(ent.length) return ent.slice(0,5);
   }
