@@ -811,22 +811,24 @@ function renderDash(){
     if(CU.role==='responsable'&&(g.area||'RRHH')!==CU.area)return false;
     return true;
   });
-  // Filter presupuestos by year/month
-  // No-admin users only see their area's budget
-  const PRES_AREA=CU.role==='admin'?PRES:PRES.filter(p=>p.area===CU.area);
-  const GDATA_AREA=CU.role==='admin'?GDATA:GDATA;  // gastos no filtrados por área (no tienen campo área)
+  // Filtro de presupuestos: responsable solo ve su área, gerencia y admin ven todo
+  const PRES_AREA=CU.role==='responsable'?PRES.filter(p=>p.area===CU.area):PRES;
   const pFilt=PRES_AREA.filter(p=>{
     if(DASH_YEAR&&String(p.anio||p.per?.slice(4))!==DASH_YEAR)return false;
-    if(DASH_MES){
-      return true;
-    }
     return true;
   });
-  // Compute totals
-  const totP=pFilt.reduce((s,p)=>{
+  const totP_pres=pFilt.reduce((s,p)=>{
     if(DASH_MES&&p.mensual)return s+(p.mensual[DASH_MES]||0);
     return s+p.monto;
   },0);
+  // Fallback: cuando no hay presupuestos cargados, usar CF_PLAN para gerencia/admin
+  const cfPlanDisp=typeof CF_PLAN!=='undefined';
+  const totP_plan=cfPlanDisp&&CU.role!=='responsable'
+    ?(CU.role==='responsable'
+      ?((cfPlan(CU.area)||{budget:0}).budget)
+      :CF_PLAN.reduce((s,p)=>s+p.budget,0))
+    :0;
+  const totP=totP_pres||totP_plan;
   const totG=gFilt.reduce((s,g)=>s+g.monto,0);
   const saldo=totP-totG;
   const ejec=pct(totG,totP||1);
@@ -848,7 +850,7 @@ function renderDash(){
         <div class="mc-label">Presupuesto ${DASH_YEAR||new Date().getFullYear()}</div>
         <div class="mc-value">${$c(totP)}</div>
         <div class="mc-pct" style="color:var(--primary)">100%</div>
-        <div class="mc-sub">${pFilt.length} presupuesto${pFilt.length!==1?'s':''} activo${pFilt.length!==1?'s':''}</div>
+        <div class="mc-sub">${pFilt.length?pFilt.length+' presupuesto'+(pFilt.length!==1?'s':'')+' cargado'+(pFilt.length!==1?'s':''):cfPlanDisp&&CU.role!=='responsable'?CF_PLAN.length+' áreas (CF_PLAN)':'Sin presupuestos'}</div>
       </div>
       <div class="metric-card c-green">
         <div class="mc-icon">📊</div>
@@ -904,6 +906,49 @@ function renderDash(){
     </div>
   `;
 
+  // Grid por área (solo gerencia y admin, usando CF_PLAN como fuente)
+  const areaGrid=(CU.role!=='responsable'&&cfPlanDisp)?`
+    <div class="card" style="margin-top:18px">
+      <div class="card-hd">
+        <h3>Presupuesto por Área</h3>
+        <span class="badge bg-gray">${CF_PLAN.length} áreas</span>
+      </div>
+      <div class="card-bd" style="padding:0"><div class="tw"><table>
+        <thead><tr>
+          <th>Área</th>
+          <th style="text-align:right">Presupuesto anual</th>
+          <th style="text-align:right">Gasto real</th>
+          <th>Ejecución</th>
+          <th>Estado</th>
+        </tr></thead>
+        <tbody>${CF_PLAN.map(p=>{
+          const real=GDATA.filter(g=>(g.area||'RRHH')===p.area).reduce((s,g)=>s+g.monto,0);
+          const pp=pct(real,p.budget||1);
+          const col=pp<=80?'var(--success)':pp<=100?'var(--warning)':'var(--danger)';
+          const bdg=pp<=80?'bg-green':pp<=100?'bg-yellow':'bg-red';
+          const ico=pp<=80?'✅':pp<=100?'🟡':'🔴';
+          return`<tr>
+            <td><span class="adot" style="background:${aCol(p.area)}"></span><strong>${p.area}</strong></td>
+            <td style="text-align:right">${$c(p.budget)}</td>
+            <td style="text-align:right"><strong>${$c(real)}</strong></td>
+            <td><div style="display:flex;align-items:center;gap:7px">
+              <div class="pbar" style="width:80px"><div class="fill" style="width:${Math.min(pp,100)}%;background:${col}"></div></div>
+              <span style="font-size:12px;font-weight:700;color:${col}">${pp}%</span>
+            </div></td>
+            <td><span class="badge ${bdg}">${ico} ${pp<=80?'OK':pp<=100?'Alerta':'Excedido'}</span></td>
+          </tr>`;
+        }).join('')}</tbody>
+        <tfoot><tr style="background:var(--bg)">
+          <td style="padding:9px 14px;font-weight:700">TOTAL</td>
+          <td style="padding:9px 14px;text-align:right;font-weight:800">${$c(CF_PLAN.reduce((s,p)=>s+p.budget,0))}</td>
+          <td style="padding:9px 14px;text-align:right;font-weight:800">${$c(GDATA.reduce((s,g)=>s+g.monto,0))}</td>
+          <td colspan="2" style="padding:9px 14px;font-size:11px;color:var(--muted)">
+            ${pct(GDATA.reduce((s,g)=>s+g.monto,0), CF_PLAN.reduce((s,p)=>s+p.budget,0)||1)}% de ejecución consolidada
+          </td>
+        </tr></tfoot>
+      </table></div></div>
+    </div>`:'';
+
   // Detalle tab: full presupuesto info with monthly breakdown + pie chart
   const detalle=`
     ${makeCategorySection(gFilt)}
@@ -923,7 +968,7 @@ function renderDash(){
         ${MESES.map(m=>`<option value="${m.k}"${DASH_MES===m.k?' selected':''}>${m.l}</option>`).join('')}
       </select>
     </div>
-    ${DASH_TAB==='resumen'?resumen:detalle}
+    ${DASH_TAB==='resumen'?resumen+areaGrid:detalle}
   `;
 }
 function setDashTab(t){DASH_TAB=t;renderDash();}
