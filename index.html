@@ -2368,6 +2368,8 @@ function cfAnalizaArea(low){
     (mayor?'• Mayor gasto: <strong>'+mayor.cat+'</strong> ('+$c(mayor.spent)+')'  :'');
 }
 
+var CF_LAST_TOPIC=null; // memoria del último tema
+
 var CF_QA={
   responsable:[
     {q:'¿En qué gasté más este año?',
@@ -2389,7 +2391,8 @@ var CF_QA={
   admin:[
     {q:'¿Qué gastos están mal clasificados?',
      keys:['clasif','correc','mal','error','imput','incorrect','equivoc','dudoso','revisar gastos'],
-     a:'Detecté <strong>7 comprobantes</strong> dudosos. Top 3:<br>• 🔴 <strong>$1,2M "Insumos varios"</strong> en Operaciones → debería ser Marketing.<br>• 🟡 <strong>$480K "Servicios"</strong> en Adm. = fee de PedidosYa (a prorratear).<br>• ⚠️ <strong>2 comprobantes</strong> sin categoría asignada.<br>¿Preparo las correcciones?'},
+     a:'Detecté <strong>7 comprobantes</strong> dudosos. Top 3:<br>• 🔴 <strong>$1,2M "Insumos varios"</strong> en Operaciones → debería ser Marketing.<br>• 🟡 <strong>$480K "Servicios"</strong> en Adm. = fee de PedidosYa (a prorratear).<br>• ⚠️ <strong>2 comprobantes</strong> sin categoría asignada.<br>¿Querés ir a Revisión de Gastos para corregirlos?',
+     followUp:function(){return 'Acá podés revisar y reclasificar cada comprobante:<br><br><button onclick="navigate(\'gastos\')" style="background:#1D4856;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">📋 Ir a Revisión de Gastos</button>';}},
     {q:'¿Qué solicitudes tengo pendientes?',
      keys:['solic','pend','revisar','pendient','bandeja','resolver','tareas'],
      a:function(){var p=cfPendientes();return p.length?('Tenés <strong>'+p.length+'</strong> sin resolver:<br>'+p.slice(0,5).map(function(x){return '• '+(x.egr||'comprobante')+' — '+(x.motivo||'revisión')+' (de '+(x.by||'—')+')';}).join('<br>')):'Sin solicitudes pendientes. Todo al día. ✅';}},
@@ -2398,7 +2401,8 @@ var CF_QA={
      a:function(){var b=cfBorradores();return b.length?('Quedan <strong>'+b.length+'</strong> en Borrador: '+b.map(function(x){return x.area+' ('+cfM(x.monto)+')';}).join(', ')+'.'):'Todos aprobados. ✅';}},
     {q:'¿Cómo viene la conciliación del mes?',
      keys:['concili','cerrar','cierr','reconcili','cierre mes','cuadrar'],
-     a:'De mayo quedan <strong>2 áreas sin cerrar</strong> (Operaciones y Compras) y 4 subsidios de promos sin cargar. El resto, conciliado. ¿Te listo lo pendiente?'},
+     a:'De mayo quedan <strong>2 áreas sin cerrar</strong> (Operaciones y Compras) y 4 subsidios de promos sin cargar. El resto, conciliado. ¿Te listo lo pendiente?',
+     followUp:'Pendiente de conciliación mayo:<br>• Operaciones — 3 comprobantes sin confirmar (total ~$890k)<br>• Compras — 1 factura de flete sin categoría<br>• 4 subsidios de promos PedidosYa sin cargar (~$1,2M)<br><br>Cuando cerrés estos, el mes queda limpio.'},
     {q:'Analizar un área específica',
      keys:['analiz','area','rrhh','marketing','produccion','producción','logistica','logística','operacion','operación','compras','dirección','direccion','administr'],
      a:function(low){return cfAnalizaArea(low||'');}}
@@ -2451,7 +2455,6 @@ function renderCharlie(){
 }
 function cfMsg(cls,html){var b=$('cfBody');if(!b)return;var d=document.createElement('div');d.className='cf-msg '+cls;d.innerHTML=html;b.appendChild(d);b.scrollTop=b.scrollHeight;}
 function cfResolve(a){return typeof a==='function'?a():a;}
-function cfAsk(i){var qa=(CF_QA[cfRole()]||CF_QA.responsable)[i];if(!qa)return;cfMsg('cf-u',qa.q);setTimeout(function(){cfMsg('cf-b',cfResolve(qa.a));},450);}
 function cfSimTexto(monto){
   var area=cfUserArea(),parts=cfPartidas(area),queda=parts.reduce(function(s,p){return s+p.disp;},0);
   if(monto>queda)return '🔴 No entra: $'+monto.toLocaleString('es-AR')+' supera lo que te queda ('+$c(queda)+'). Habría que pedir más presupuesto.';
@@ -2459,12 +2462,19 @@ function cfSimTexto(monto){
   if(monto>150000)return '🟡 Sí, podés. Entre $150k y $800k se autoriza pero queda registrado y se avisa. Te quedarían '+$c(queda-monto)+'.';
   return '🟢 Sí, gastalo sin pedir permiso. Te quedarían '+$c(queda-monto)+'.';
 }
+function cfNorm(s){return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
 function cfSend(){
   var inp=$('cfInput');var t=(inp.value||'').trim();if(!t)return;cfMsg('cf-u',t);inp.value='';
-  var low=t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); // sin tildes
+  var low=cfNorm(t);
 
-  // Simulador numérico (todos los roles pueden preguntar montos)
-  var num=parseFloat((t.replace(/[\.\s]/g,'').match(/\d+/)||[])[0]);
+  // Respuesta afirmativa al último tema (si/dale/ok/claro/sí/preparar/mostrar/listo)
+  if(/^(si|dale|ok|claro|bueno|sip|si prepara|si lista|hacelo|hacélo|preparar|mostrar|ver|listame|listámelo|si quiero|por favor|listo|genial|perfecto|anda|vamos)/.test(low) && CF_LAST_TOPIC && CF_LAST_TOPIC.followUp){
+    setTimeout(function(){cfMsg('cf-b',cfResolve(CF_LAST_TOPIC.followUp));},450);
+    return;
+  }
+
+  // Simulador numérico
+  var num=parseFloat((t.replace(/[.\s]/g,'').match(/\d+/)||[])[0]);
   if(num&&num>0 && /gast|puedo|alcanza|cuest|monto|autoriza/.test(low)){
     setTimeout(function(){cfMsg('cf-b',cfSimTexto(num));},450);return;
   }
@@ -2473,25 +2483,28 @@ function cfSend(){
   var qa=CF_QA[cfRole()]||CF_QA.responsable;
   var matched=null;
   for(var i=0;i<qa.length;i++){
-    var item=qa[i];
-    var keys=item.keys||[];
-    var hit=keys.some(function(k){return low.indexOf(k.normalize('NFD').replace(/[̀-ͯ]/g,''))>=0;});
-    if(hit){matched=item;break;}
+    var keys=qa[i].keys||[];
+    if(keys.some(function(k){return low.indexOf(cfNorm(k))>=0;})){matched=qa[i];break;}
   }
 
   setTimeout(function(){
     if(matched){
-      // Si la respuesta acepta el texto (para analizar área), pasarlo
+      CF_LAST_TOPIC=matched;
       var ans=typeof matched.a==='function'?matched.a(low):matched.a;
       cfMsg('cf-b',ans);
     } else {
-      // Fallback con sugerencias clickeables
       var sugs=qa.slice(0,3).map(function(x,i){
         return '<button onclick="cfAsk('+i+')" style="display:block;width:100%;text-align:left;background:#e9f6f3;border:1.5px solid #33A392;color:#1D4856;border-radius:7px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px">'+x.q+'</button>';
       }).join('');
-      cfMsg('cf-b','No encontré esa consulta. Probá con alguna de estas:<br>'+sugs);
+      cfMsg('cf-b','No encontré esa consulta exacta. Probá con:<br>'+sugs);
     }
   },450);
+}
+function cfAsk(i){
+  var qa=(CF_QA[cfRole()]||CF_QA.responsable)[i];if(!qa)return;
+  CF_LAST_TOPIC=qa;
+  cfMsg('cf-u',qa.q);
+  setTimeout(function(){cfMsg('cf-b',typeof qa.a==='function'?qa.a(''):qa.a);},450);
 }
 </script>
 </body>
