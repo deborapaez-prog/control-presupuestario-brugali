@@ -1262,13 +1262,71 @@ function pvSort(col){
   pvRender();
 }
 
-function resolverAjuste(id){
+function abrirModalResolucion(id){
+  var ajustes=JSON.parse(localStorage.getItem('b_ajustes')||'[]');
+  var a=ajustes.find(function(x){return x.id===id;});
+  if(!a)return;
+  var g=GDATA.find(function(x){return x.egr===a.egr;});
+  var overlay=document.createElement('div');
+  overlay.id='resolModal';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML=`
+    <div style="background:var(--card);border-radius:var(--r);box-shadow:0 8px 32px rgba(0,0,0,0.2);width:100%;max-width:520px;padding:28px;font-family:inherit">
+      <h3 style="margin:0 0 4px;font-size:17px;color:var(--text)">Resolver solicitud de revisión</h3>
+      <p style="margin:0 0 18px;font-size:12px;color:var(--muted)">Comprobante <strong>${a.egr}</strong>${g?' — '+(g.desc||'').slice(0,50):''}</p>
+      <div style="background:var(--bg);border-radius:var(--r-sm);padding:12px;margin-bottom:18px;font-size:12px;line-height:1.6">
+        <div><strong>Motivo:</strong> ${a.motivo}</div>
+        <div><strong>Detalle:</strong> ${a.detalle||'—'}</div>
+        <div><strong>Solicitado por:</strong> ${a.by}${a.area?' ('+a.area+')':''}</div>
+      </div>
+      <div style="margin-bottom:16px">
+        <p style="font-size:13px;font-weight:600;margin:0 0 10px;color:var(--text)">¿Cuál es tu decisión?</p>
+        <div style="display:flex;gap:10px">
+          <label id="lblAceptar" style="flex:1;border:2px solid var(--border);border-radius:var(--r-sm);padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;transition:all .2s">
+            <input type="radio" name="resolDecision" value="aceptar" onchange="tglResolBtn()" style="accent-color:#16a34a"> <span>✅ Aceptar reclamo</span>
+          </label>
+          <label id="lblRechazar" style="flex:1;border:2px solid var(--border);border-radius:var(--r-sm);padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;transition:all .2s">
+            <input type="radio" name="resolDecision" value="rechazar" onchange="tglResolBtn()" style="accent-color:#dc2626"> <span>❌ Rechazar reclamo</span>
+          </label>
+        </div>
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:6px">Observaciones <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+        <textarea id="resolObs" rows="3" placeholder="Ej: El gasto corresponde a los folletos técnicos del período, categoría correcta..." style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:10px;font-size:13px;color:var(--text);background:var(--bg);resize:vertical;outline:none;font-family:inherit"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="document.getElementById('resolModal').remove()">Cancelar</button>
+        <button id="resolConfirm" class="btn btn-primary" disabled onclick="confirmarResolucion('${id}')">Confirmar resolución</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function tglResolBtn(){
+  var btn=document.getElementById('resolConfirm');
+  var sel=document.querySelector('input[name="resolDecision"]:checked');
+  if(btn)btn.disabled=!sel;
+  // highlight selected label
+  var lblA=document.getElementById('lblAceptar');
+  var lblR=document.getElementById('lblRechazar');
+  if(sel&&lblA&&lblR){
+    lblA.style.borderColor=sel.value==='aceptar'?'#16a34a':'var(--border)';
+    lblA.style.background=sel.value==='aceptar'?'#f0fdf4':'';
+    lblR.style.borderColor=sel.value==='rechazar'?'#dc2626':'var(--border)';
+    lblR.style.background=sel.value==='rechazar'?'#fef2f2':'';
+  }
+}
+function confirmarResolucion(id){
+  var sel=document.querySelector('input[name="resolDecision"]:checked');
+  if(!sel)return;
+  var obs=(document.getElementById('resolObs').value||'').trim();
   var ajustes=JSON.parse(localStorage.getItem('b_ajustes')||'[]');
   ajustes=ajustes.map(function(a){
-    if(a.id===id)return Object.assign({},a,{resuelto:true,resueltoPor:CU.name,fechaResolucion:new Date().toISOString()});
+    if(a.id===id)return Object.assign({},a,{resuelto:true,accion:sel.value,observaciones:obs,resueltoPor:CU.name,fechaResolucion:new Date().toISOString()});
     return a;
   });
   localStorage.setItem('b_ajustes',JSON.stringify(ajustes));
+  var modal=document.getElementById('resolModal');
+  if(modal)modal.remove();
   renderImportar();
 }
 
@@ -1299,7 +1357,12 @@ function renderGastos(){
             +'<td><span class="badge bg-yellow">'+a.motivo+'</span></td>'
             +'<td style="font-size:12px">'+a.destinatario+'</td>'
             +'<td style="font-size:12px;white-space:nowrap">'+$ts(a.fecha)+'</td>'
-            +'<td>'+(a.resuelto?'<span class="badge bg-green">✓ Resuelta</span>':'<span class="badge bg-yellow">Pendiente</span>')+'</td>'
+            +'<td>'+(a.resuelto
+              ?(a.accion==='rechazar'
+                ?'<span class="badge" style="background:#dc2626;color:#fff">❌ Rechazado</span>'
+                :'<span class="badge bg-green">✅ Aceptado</span>')
+              +'<br>'+(a.observaciones?'<span style="font-size:11px;color:var(--muted);display:block;margin-top:3px;max-width:200px;white-space:normal"><strong>Obs.:</strong> '+a.observaciones+'</span>':'')
+              :'<span class="badge bg-yellow">Pendiente</span>')+'</td>'
             +'</tr>';}).join('')}
           </tbody>
         </table></div>
@@ -1426,10 +1489,12 @@ function renderImportar(){
               +'<td style="font-size:12px;max-width:180px;white-space:normal">'+a.detalle+'</td>'
               +'<td style="font-size:12px;white-space:nowrap">'+a.by+(a.area?'<br><span style="font-size:10px;color:var(--muted)">'+a.area+'</span>':'')+'</td>'
               +'<td style="font-size:12px;white-space:nowrap">'+$ts(a.fecha)+'</td>'
-              +'<td>'+(!a.resuelto?'<span class="badge bg-yellow">Pendiente</span>':'<span class="badge bg-green">Resuelto</span>')+'</td>'
+              +'<td>'+(!a.resuelto?'<span class="badge bg-yellow">Pendiente</span>':a.accion==='rechazar'?'<span class="badge" style="background:#dc2626;color:#fff">❌ Rechazado</span>':'<span class="badge bg-green">✅ Aceptado</span>')+'</td>'
               +'<td>'+(!a.resuelto
-                ?'<button class="btn btn-sm btn-success" onclick="resolverAjuste(\''+a.id+'\')">✓ Resolver</button>'
-                :'<span style="font-size:11px;color:var(--muted)">'+(a.resueltoPor||'')+'</span>')
+                ?'<button class="btn btn-sm btn-primary" onclick="abrirModalResolucion(\''+a.id+'\')">📋 Resolver</button>'
+                :a.accion
+                  ?'<div style="font-size:11px;color:var(--muted);line-height:1.4">'+(a.resueltoPor||'')+(a.observaciones?'<br><em style="color:var(--text);font-style:normal">'+a.observaciones.slice(0,60)+(a.observaciones.length>60?'…':'')+'</em>':'')+'</div>'
+                  :'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--muted)">'+(a.resueltoPor||'')+'</span><button class="btn btn-sm btn-ghost" style="padding:2px 7px;font-size:11px" onclick="abrirModalResolucion(\''+a.id+'\')">📝 Completar</button></div>')
               +'</td>'
               +'</tr>';
           }).join('')}
