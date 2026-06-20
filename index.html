@@ -2415,8 +2415,35 @@ var CF_QA={
      keys:['eficienc','peso','factura','estructura','costos','costo','proporcion','proporción','ratio'],
      a:'El gasto interno de las 8 áreas pesa hoy ~<strong>2,3%</strong> de la facturación. La meta para 2027 es que <strong>baje</strong> aunque crezcamos: la estructura escala sin inflarse. Producción y Operaciones son las de mayor peso.'},
     {q:'Si crecemos 40% en 2027, ¿cómo queda el presupuesto?',
-     keys:['2027','crecer','crecimiento','escenario','proyect','futuro','forecast','siguiente año'],
-     a:'Si el gasto creciera igual que la facturación (+40%), las 8 áreas pasarían de ~$415M a ~$580M. Manteniendo disciplina, áreas como Adm., Dirección y Marketing deberían crecer <strong>menos</strong> que la facturación. Te armo el escenario partida por partida.'},
+     keys:['2027','crecer','crecimiento','proyect','futuro','siguiente año','plan anual'],
+     a:'Si el gasto creciera igual que la facturación (+40%), las 8 áreas pasarían de ~$415M a ~$580M. La disciplina está en que Adm., Dirección y Marketing crezcan <strong>menos</strong> que la facturación. ¿Te armo la tabla por área?',
+     followUp:function(){
+       var rows=CF_PLAN.map(function(p){
+         var disc={'Dirección':0.15,'Administración y Finanzas':0.20,'Marketing':0.25};
+         var factor=disc[p.area]!==undefined?disc[p.area]:0.40;
+         var b27=Math.round(p.budget*(1+factor));
+         var delta=b27-p.budget;
+         var icon=factor<0.30?'🟢':factor<0.38?'🟡':'🔴';
+         return '<tr><td>'+p.area+'</td><td>'+cfM(p.budget)+'</td><td><strong>'+cfM(b27)+'</strong></td>'+
+           '<td style="color:'+(factor<0.30?'var(--success)':'var(--warning)')+'"><strong>+'+Math.round(factor*100)+'%</strong></td>'+
+           '<td>'+icon+'</td></tr>';
+       }).join('');
+       var tot=CF_PLAN.reduce(function(s,p){return s+p.budget;},0);
+       var tot27=CF_PLAN.reduce(function(s,p){var d={'Dirección':0.15,'Administración y Finanzas':0.20,'Marketing':0.25};var f=d[p.area]!==undefined?d[p.area]:0.40;return s+Math.round(p.budget*(1+f));},0);
+       return 'Escenario 2027 con disciplina presupuestaria:<br>'+
+         '<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;font-size:12px;border-collapse:collapse">'+
+         '<thead><tr style="background:#f8fafc"><th style="text-align:left;padding:6px 10px;font-size:10px;color:#999;text-transform:uppercase">Área</th>'+
+         '<th style="padding:6px 10px;font-size:10px;color:#999;text-transform:uppercase">2026</th>'+
+         '<th style="padding:6px 10px;font-size:10px;color:#999;text-transform:uppercase">2027</th>'+
+         '<th style="padding:6px 10px;font-size:10px;color:#999;text-transform:uppercase">Var.</th>'+
+         '<th style="padding:6px 10px"></th></tr></thead>'+
+         '<tbody>'+rows+'</tbody>'+
+         '<tfoot><tr style="background:#f8fafc;font-weight:700"><td style="padding:6px 10px">TOTAL</td>'+
+         '<td style="padding:6px 10px">'+cfM(tot)+'</td>'+
+         '<td style="padding:6px 10px"><strong>'+cfM(tot27)+'</strong></td>'+
+         '<td style="padding:6px 10px;color:var(--warning)">+'+pct(tot27-tot,tot)+'%</td><td></td></tr></tfoot>'+
+         '</table></div><br>🟢 crece menos que facturación · 🟡 acompasa · 🔴 excede meta';
+     }},
     {q:'¿Qué tengo para aprobar?',
      keys:['aprob','pendient','autori','validar','borrador','espera','firmar'],
      a:function(){var b=cfBorradores();return b.length?('Tenés <strong>'+b.length+'</strong> esperando aprobación: '+b.map(function(x){return x.area+' ('+cfM(x.monto)+')';}).join(', ')+'.'):'Nada pendiente de aprobación. ✅';}},
@@ -2468,7 +2495,7 @@ function cfSend(){
   var low=cfNorm(t);
 
   // Respuesta afirmativa al último tema (si/dale/ok/claro/sí/preparar/mostrar/listo)
-  if(/^(si|dale|ok|claro|bueno|sip|si prepara|si lista|hacelo|hacélo|preparar|mostrar|ver|listame|listámelo|si quiero|por favor|listo|genial|perfecto|anda|vamos)/.test(low) && CF_LAST_TOPIC && CF_LAST_TOPIC.followUp){
+  if(/^(si|sí|dale|ok|claro|bueno|sip|hacelo|preparar|mostrar|mostra|mostrame|mostrá|ver|listame|quiero|por favor|listo|genial|perfecto|anda|vamos|arma|armame|armalo|armá|va|exacto|correcto|eso)/.test(low.trim()) && CF_LAST_TOPIC && CF_LAST_TOPIC.followUp){
     setTimeout(function(){cfMsg('cf-b',cfResolve(CF_LAST_TOPIC.followUp));},450);
     return;
   }
