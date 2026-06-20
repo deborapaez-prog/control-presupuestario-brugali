@@ -922,14 +922,17 @@ function renderDash(){
           <th>Estado</th>
         </tr></thead>
         <tbody>${CF_PLAN.map(p=>{
+          // Usar monto de PRES si existe para esa área, si no CF_PLAN
+          const presEntry=PRES.filter(pr=>pr.area===p.area).sort((a,b)=>(b.anio||0)-(a.anio||0))[0];
+          const budget=presEntry?presEntry.monto:p.budget;
           const real=GDATA.filter(g=>(g.area||'RRHH')===p.area).reduce((s,g)=>s+g.monto,0);
-          const pp=pct(real,p.budget||1);
+          const pp=pct(real,budget||1);
           const col=pp<=80?'var(--success)':pp<=100?'var(--warning)':'var(--danger)';
           const bdg=pp<=80?'bg-green':pp<=100?'bg-yellow':'bg-red';
           const ico=pp<=80?'✅':pp<=100?'🟡':'🔴';
           return`<tr>
-            <td><span class="adot" style="background:${aCol(p.area)}"></span><strong>${p.area}</strong></td>
-            <td style="text-align:right">${$c(p.budget)}</td>
+            <td><span class="adot" style="background:${aCol(p.area)}"></span><strong>${p.area}</strong>${presEntry?'':' <span class="badge bg-gray" style="font-size:9px">ref</span>'}</td>
+            <td style="text-align:right">${$c(budget)}</td>
             <td style="text-align:right"><strong>${$c(real)}</strong></td>
             <td><div style="display:flex;align-items:center;gap:7px">
               <div class="pbar" style="width:80px"><div class="fill" style="width:${Math.min(pp,100)}%;background:${col}"></div></div>
@@ -940,10 +943,10 @@ function renderDash(){
         }).join('')}</tbody>
         <tfoot><tr style="background:var(--bg)">
           <td style="padding:9px 14px;font-weight:700">TOTAL</td>
-          <td style="padding:9px 14px;text-align:right;font-weight:800">${$c(CF_PLAN.reduce((s,p)=>s+p.budget,0))}</td>
+          <td style="padding:9px 14px;text-align:right;font-weight:800">${$c(totP||CF_PLAN.reduce((s,p)=>s+p.budget,0))}</td>
           <td style="padding:9px 14px;text-align:right;font-weight:800">${$c(GDATA.reduce((s,g)=>s+g.monto,0))}</td>
           <td colspan="2" style="padding:9px 14px;font-size:11px;color:var(--muted)">
-            ${pct(GDATA.reduce((s,g)=>s+g.monto,0), CF_PLAN.reduce((s,p)=>s+p.budget,0)||1)}% de ejecución consolidada
+            ${pct(GDATA.reduce((s,g)=>s+g.monto,0),(totP||CF_PLAN.reduce((s,p)=>s+p.budget,0))||1)}% de ejecución consolidada
           </td>
         </tr></tfoot>
       </table></div></div>
