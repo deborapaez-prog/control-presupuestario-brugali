@@ -1700,6 +1700,9 @@ function renderReportes(){
       <div class="card-bd">${barChart}</div>
     </div>
 
+    <!-- Forecast -->
+    ${forecastSection()}
+
     <!-- Tablas categoría + período -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
       <div class="card">
@@ -1744,6 +1747,131 @@ function renderReportes(){
     </div>`;
 }
 
+function forecastSection(){
+  const TODOS=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const REAL=CF_MES; // meses con datos reales
+  const lastRealIdx=TODOS.indexOf(REAL[REAL.length-1]);
+
+  // Áreas según rol/filtro
+  const areaFiltro=CU.role==='responsable'?CU.area:(REP_AREA||null);
+  const areas=areaFiltro?[areaFiltro]:CF_PLAN.map(function(p){return p.area;});
+
+  // Presupuesto total
+  const totalBudget=areas.reduce(function(s,a){var p=cfPlan(a);return s+(p?p.budget:0);},0);
+  if(!totalBudget)return '';
+  const bpm=totalBudget/12;
+
+  // Gasto real mensual (null si no hay datos del mes todavía)
+  const realByMonth=TODOS.map(function(m){
+    if(REAL.indexOf(m)<0)return null;
+    return areas.reduce(function(s,a){return s+cfEjec(a,m);},0);
+  });
+
+  // Real acumulado
+  var runR=0;
+  const realCum=TODOS.map(function(m,i){
+    if(realByMonth[i]===null)return null;
+    runR+=realByMonth[i];return runR;
+  });
+  const lastRealCum=realCum[lastRealIdx]||0;
+
+  // Promedio mensual real
+  const realTotal=realByMonth.filter(function(v){return v!==null;}).reduce(function(s,v){return s+v;},0);
+  const avgMensual=REAL.length?Math.round(realTotal/REAL.length):0;
+
+  // Forecast acumulado (parte desde el último real)
+  var runF=lastRealCum;
+  const forecastCum=TODOS.map(function(m,i){
+    if(i<lastRealIdx)return null;
+    if(i===lastRealIdx)return lastRealCum;
+    runF+=avgMensual;return runF;
+  });
+
+  // Presupuesto acumulado
+  const budgetCum=TODOS.map(function(m,i){return Math.round(bpm*(i+1));});
+
+  // Proyección final
+  const forecastTotal=lastRealCum+avgMensual*(12-REAL.length);
+  const saldo=Math.round(totalBudget-forecastTotal);
+  const ppFin=pct(forecastTotal,totalBudget||1);
+
+  // SVG LINE CHART
+  var W=680,H=200,PL=68,PR=16,PT=18,PB=32;
+  var cW=W-PL-PR,cH=H-PT-PB;
+  var maxY=Math.max.apply(null,[].concat(budgetCum,[lastRealCum+avgMensual*(12-REAL.length)]).filter(Boolean))||1;
+  maxY=Math.ceil(maxY*1.08);
+
+  function xp(i){return PL+i/11*cW;}
+  function yp(v){return PT+cH-(v/maxY)*cH;}
+
+  // Grid lines Y
+  var yGrid=['','','',''].map(function(_,i){
+    var v=maxY*(i+1)/4;
+    var y=yp(v);
+    var lbl=v>=1e9?'$'+(v/1e9).toFixed(1)+'B':v>=1e6?'$'+(v/1e6).toFixed(0)+'M':v>=1e3?'$'+Math.round(v/1e3)+'k':'$0';
+    return '<line x1="'+PL+'" y1="'+y+'" x2="'+(W-PR)+'" y2="'+y+'" stroke="#f0f0f0" stroke-width="1"/>'+
+           '<text x="'+(PL-5)+'" y="'+(y+3)+'" text-anchor="end" font-size="8.5" fill="#bbb" font-family="Nunito,sans-serif">'+lbl+'</text>';
+  }).join('');
+
+  // X labels
+  var xLabels=TODOS.map(function(m,i){
+    var col=i<=lastRealIdx?'#1D4856':'#F58232';
+    return '<text x="'+xp(i)+'" y="'+(H-6)+'" text-anchor="middle" font-size="8.5" fill="'+col+'" font-family="Nunito,sans-serif">'+m+'</text>';
+  }).join('');
+
+  // Polylines helper
+  function poly(arr,color,dash){
+    var pts=arr.map(function(v,i){return v!==null?xp(i)+','+yp(v):null;}).filter(Boolean).join(' ');
+    return '<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.5"'+(dash?' stroke-dasharray="'+dash+'"':'')+' stroke-linejoin="round" stroke-linecap="round"/>';
+  }
+
+  // Separador real/forecast
+  var sep='<line x1="'+xp(lastRealIdx)+'" y1="'+PT+'" x2="'+xp(lastRealIdx)+'" y2="'+(PT+cH)+'" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,3"/>'+
+          '<text x="'+(xp(lastRealIdx)+4)+'" y="'+(PT+11)+'" font-size="7.5" fill="#94a3b8" font-family="Nunito,sans-serif">Real | Forecast</text>';
+
+  // Dots
+  var dots='<circle cx="'+xp(lastRealIdx)+'" cy="'+yp(lastRealCum)+'" r="4" fill="#33A392"/>'+
+            '<circle cx="'+xp(11)+'" cy="'+yp(budgetCum[11])+'" r="4" fill="#1D4856"/>'+
+            '<circle cx="'+xp(11)+'" cy="'+yp(forecastCum[11]||forecastTotal)+'" r="4" fill="#F58232"/>';
+
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">'+
+    yGrid+xLabels+sep+
+    poly(budgetCum,'#1D4856','')+
+    poly(realCum,'#33A392','')+
+    poly(forecastCum,'#F58232','7,4')+
+    dots+'</svg>';
+
+  var statusBadge=ppFin<=80?'bg-green':ppFin<=100?'bg-yellow':'bg-red';
+  var statusIcon=ppFin<=80?'✅ ':ppFin<=100?'🟡 ':'🔴 ';
+
+  return '<div class="card" style="margin-bottom:18px">'+
+    '<div class="card-hd"><h3>📈 Proyección de Cierre de Año</h3>'+
+    '<span class="badge '+statusBadge+'">'+statusIcon+'Proyección: '+ppFin+'%</span></div>'+
+    '<div class="card-bd">'+
+    svg+
+    '<div style="display:flex;gap:18px;justify-content:center;margin:10px 0 16px">'+
+      '<span style="display:flex;align-items:center;gap:5px;font-size:11px"><span style="width:18px;height:3px;background:#1D4856;display:inline-block;border-radius:2px"></span>Presupuesto</span>'+
+      '<span style="display:flex;align-items:center;gap:5px;font-size:11px"><span style="width:18px;height:3px;background:#33A392;display:inline-block;border-radius:2px"></span>Real acumulado</span>'+
+      '<span style="display:flex;align-items:center;gap:5px;font-size:11px"><span style="width:18px;height:3px;background:#F58232;display:inline-block;border-radius:2px;border-top:2px dashed #F58232"></span>Forecast</span>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">'+
+      '<div style="background:var(--bg);border-radius:var(--r-sm);padding:14px;text-align:center">'+
+        '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Gasto real acumulado</div>'+
+        '<div style="font-size:18px;font-weight:800;color:var(--text)">'+$c(Math.round(realTotal))+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+REAL.length+' meses ejecutados · prom. '+$c(avgMensual)+'/mes</div>'+
+      '</div>'+
+      '<div style="background:var(--bg);border-radius:var(--r-sm);padding:14px;text-align:center">'+
+        '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Proyección al 31/dic</div>'+
+        '<div style="font-size:18px;font-weight:800;color:'+(ppFin<=100?'var(--success)':'var(--danger)')+'">'+$c(Math.round(forecastTotal))+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+ppFin+'% del presupuesto anual</div>'+
+      '</div>'+
+      '<div style="background:var(--bg);border-radius:var(--r-sm);padding:14px;text-align:center">'+
+        '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Saldo proyectado</div>'+
+        '<div style="font-size:18px;font-weight:800;color:'+(saldo>=0?'var(--success)':'var(--danger)')+'">'+( saldo>=0?'+':'')+$c(Math.abs(saldo))+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+(saldo>=0?'Sin déficit proyectado':'⚠️ Déficit proyectado')+'</div>'+
+      '</div>'+
+    '</div></div></div>';
+}
 function presVsRealSection(){
   const rows=PRES.map(p=>{
     const gastos=GDATA.filter(g=>{
