@@ -76,6 +76,21 @@ select.input{cursor:pointer}
 .tb-subtitle{font-size:12px;color:var(--muted);font-weight:400}
 .tb-date{font-size:12.5px;color:var(--muted);white-space:nowrap}
 .tb-user{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:var(--r-sm);border:1px solid var(--border)}
+.notif-btn{position:relative;background:none;border:1px solid var(--border);border-radius:var(--r-sm);width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);transition:background .15s}
+.notif-btn:hover{background:var(--bg)}
+.notif-badge{position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:50%;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1}
+.notif-panel{position:absolute;top:calc(var(--th) + 4px);right:24px;width:340px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:200;max-height:420px;overflow-y:auto}
+.notif-hd{padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.notif-hd h4{margin:0;font-size:14px;font-weight:700;color:var(--text)}
+.notif-item{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;transition:background .15s}
+.notif-item:hover{background:var(--bg)}
+.notif-item.unread{background:#fdf4ff}
+.notif-item:last-child{border-bottom:none}
+.notif-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px}
+.notif-body{flex:1;min-width:0}
+.notif-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+.notif-sub{font-size:11px;color:var(--muted);line-height:1.4}
+.notif-empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:13px}
 .tb-user-name{font-size:13px;font-weight:600;color:var(--text)}
 .tb-user-role{font-size:11px;color:var(--muted)}
 .sync-pill{display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:20px;font-size:11.5px;color:var(--muted);white-space:nowrap}
@@ -274,6 +289,10 @@ thead th.th-sort.active .sort-arrow{opacity:1}
       Actualizar ahora
     </button>
     <div class="tb-date" id="tbDate"></div>
+    <button class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()" title="Notificaciones">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+    </button>
     <div class="tb-user" id="tbUser"></div>
   </div>
 
@@ -642,7 +661,7 @@ function startApp(){
   $('loginScreen').style.display='none';
   $('appScreen').style.display='block';
   $('tbDate').textContent=todayStr();
-  renderTbUser();renderSidebar();renderSyncPill();navigate('dashboard');
+  renderTbUser();renderSidebar();renderSyncPill();navigate('dashboard');updateNotifBadge();
   // Auto-sync from Google Sheets on login (non-blocking)
   setTimeout(()=>doSync(),800);
 }
@@ -1249,6 +1268,7 @@ function confirmarAjuste(egr){
     b.style.background='var(--success-bg)';b.style.color='#16a34a';b.style.border='1px solid var(--success-b)';
     b.disabled=true;
   });
+  updateNotifBadge();
 }
 function pvSort(col){
   if(_pvState.sc===col){_pvState.sd*=-1;}else{_pvState.sc=col;_pvState.sd=-1;}
@@ -1328,6 +1348,87 @@ function confirmarResolucion(id){
   var modal=document.getElementById('resolModal');
   if(modal)modal.remove();
   renderImportar();
+  updateNotifBadge();
+}
+
+// ── NOTIFICACIONES ────────────────────────────────────────────
+function getNotifsSeen(){return JSON.parse(localStorage.getItem('b_notifs_seen')||'[]');}
+function saveNotifsSeen(arr){localStorage.setItem('b_notifs_seen',JSON.stringify(arr));}
+
+function getNotifs(){
+  var ajustes=JSON.parse(localStorage.getItem('b_ajustes')||'[]');
+  var notifs=[];
+  if(CU.role==='admin'){
+    // Admin ve solicitudes pendientes
+    ajustes.filter(function(a){return !a.resuelto;}).forEach(function(a){
+      notifs.push({id:'pend_'+a.id,type:'pending',icon:'🔔',bg:'#fdf4ff',egr:a.egr,motivo:a.motivo,by:a.by,area:a.area,fecha:a.fecha});
+    });
+  } else {
+    // Responsable ve sus solicitudes resueltas
+    ajustes.filter(function(a){return a.resuelto&&a.by===CU.name&&a.accion;}).forEach(function(a){
+      notifs.push({id:'res_'+a.id,type:'resolved',icon:a.accion==='rechazar'?'❌':'✅',bg:a.accion==='rechazar'?'#fef2f2':'#f0fdf4',egr:a.egr,accion:a.accion,observaciones:a.observaciones,resueltoPor:a.resueltoPor,fecha:a.fechaResolucion});
+    });
+  }
+  // Más recientes primero
+  notifs.sort(function(a,b){return (b.fecha||'')>(a.fecha||'')?1:-1;});
+  return notifs;
+}
+
+function updateNotifBadge(){
+  var notifs=getNotifs();
+  var seen=getNotifsSeen();
+  var unseen=notifs.filter(function(n){return seen.indexOf(n.id)<0;}).length;
+  var badge=document.getElementById('notifBadge');
+  if(badge){badge.textContent=unseen;badge.style.display=unseen>0?'flex':'none';}
+}
+
+function toggleNotifPanel(){
+  var existing=document.getElementById('notifPanel');
+  if(existing){existing.remove();return;}
+  // Marcar todas como vistas
+  var notifs=getNotifs();
+  saveNotifsSeen(notifs.map(function(n){return n.id;}));
+  updateNotifBadge();
+  // Construir panel
+  var panel=document.createElement('div');
+  panel.id='notifPanel';
+  panel.className='notif-panel';
+  var html='<div class="notif-hd"><h4>🔔 Notificaciones</h4><button onclick="document.getElementById(\'notifPanel\').remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;line-height:1">×</button></div>';
+  if(notifs.length===0){
+    html+='<div class="notif-empty">Sin notificaciones nuevas</div>';
+  } else {
+    notifs.forEach(function(n){
+      if(n.type==='pending'){
+        html+='<div class="notif-item" onclick="navTo(\'importar\');document.getElementById(\'notifPanel\').remove()" style="cursor:pointer">'
+          +'<div class="notif-icon" style="background:#fdf4ff">🔔</div>'
+          +'<div class="notif-body">'
+          +'<div class="notif-title">Nueva solicitud de revisión</div>'
+          +'<div class="notif-sub"><strong>'+n.by+'</strong>'+(n.area?' · '+n.area:'')+'<br>'+n.egr+' — <em>'+n.motivo+'</em></div>'
+          +'<div class="notif-sub" style="margin-top:3px">'+$ts(n.fecha)+'</div>'
+          +'</div></div>';
+      } else {
+        var label=n.accion==='rechazar'?'Solicitud rechazada':'Solicitud aceptada';
+        html+='<div class="notif-item" onclick="navTo(\'gastos\');document.getElementById(\'notifPanel\').remove()" style="cursor:pointer">'
+          +'<div class="notif-icon" style="background:'+n.bg+'">'+n.icon+'</div>'
+          +'<div class="notif-body">'
+          +'<div class="notif-title">'+label+'</div>'
+          +'<div class="notif-sub">'+n.egr+(n.resueltoPor?' · por '+n.resueltoPor:'')+'</div>'
+          +(n.observaciones?'<div class="notif-sub" style="margin-top:3px;font-style:italic">'+n.observaciones.slice(0,80)+'</div>':'')
+          +'<div class="notif-sub" style="margin-top:3px">'+$ts(n.fecha)+'</div>'
+          +'</div></div>';
+      }
+    });
+  }
+  panel.innerHTML=html;
+  document.body.appendChild(panel);
+  // Cerrar al hacer click afuera
+  setTimeout(function(){
+    document.addEventListener('click',function handler(e){
+      if(!panel.contains(e.target)&&e.target.id!=='notifBtn'&&!e.target.closest('#notifBtn')){
+        panel.remove();document.removeEventListener('click',handler);
+      }
+    });
+  },10);
 }
 
 function renderGastos(){
