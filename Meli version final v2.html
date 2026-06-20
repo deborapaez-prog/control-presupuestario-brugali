@@ -2142,23 +2142,86 @@ function cfRole(){ return CU.role==='admin'?'admin':CU.role==='gerencia'?'gerenc
 function cfAreasRiesgo(){return CF_PLAN.filter(function(p){var proy=cfEjecYTD(p.area)/CF_MES.length*12;return pct(proy,p.budget)>90;});}
 function cfPendientes(){try{return JSON.parse(localStorage.getItem('b_ajustes')||'[]').filter(function(a){return !a.resuelto;});}catch(e){return[];}}
 function cfBorradores(){return (typeof PRES!=='undefined'?PRES:[]).filter(function(p){return p.estado==='Borrador';});}
+
+function cfAlertasArea(area){
+  return cfPartidas(area).map(function(p){
+    var pp=pct(p.spent,p.budget||1);
+    return {cat:p.cat,pp:pp,nivel:pp>=90?'rojo':pp>=70?'amarillo':'verde',disp:p.disp,spent:p.spent};
+  }).filter(function(a){return a.nivel!=='verde';}).sort(function(a,b){return b.pp-a.pp;});
+}
+
+function cfActions(btns){
+  var b=$('cfBody');if(!b)return;
+  var d=document.createElement('div');
+  d.style.cssText='display:flex;flex-wrap:wrap;gap:7px;padding:2px 0 4px 2px;';
+  d.innerHTML=btns.map(function(btn){
+    return '<button onclick="'+btn.fn+'" style="background:#e9f6f3;border:1.5px solid #33A392;color:#1D4856;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'#d0ede8\'" onmouseout="this.style.background=\'#e9f6f3\'">'+btn.label+'</button>';
+  }).join('');
+  b.appendChild(d);b.scrollTop=b.scrollHeight;
+}
+
 function cfBriefing(){
   var r=cfRole();
   if(r==='responsable'){
-    var a=cfUserArea(),parts=cfPartidas(a),bud=parts.reduce(function(s,p){return s+p.budget;},0),sp=parts.reduce(function(s,p){return s+p.spent;},0);
+    var a=cfUserArea();
+    var alerts=cfAlertasArea(a);
+    var parts=cfPartidas(a);
+    var bud=parts.reduce(function(s,p){return s+p.budget;},0);
+    var sp=parts.reduce(function(s,p){return s+p.spent;},0);
     var queda=bud-sp,pp=pct(sp,bud||1),proy=pct(sp/CF_MES.length*12,bud||1);
-    var est=proy<=80?'vas con buen margen':proy<=100?'vas justo, prestá atención':'⚠️ a este ritmo te pasás';
-    var mayor=parts.slice().sort(function(x,y){return y.spent-x.spent;})[0]||{cat:'—'};
-    return 'Esto es lo importante de tu área hoy:<br>• Llevás usado el <strong>'+pp+'%</strong> de tu presupuesto y '+est+'.<br>• Te quedan <strong>'+$c(queda)+'</strong> para el resto del año.<br>• Tu mayor gasto es <strong>'+mayor.cat+'</strong>.<br>¿Querés que profundice en algo?';
+    var est=proy<=80?'vas bien':proy<=100?'vas justo, prestá atención':'⚠️ a este ritmo te pasás';
+    var alertTxt='';
+    if(alerts.length){
+      alertTxt='Detecté <strong>'+alerts.length+' alerta'+(alerts.length>1?'s':'')+'</strong> en <strong>'+a+'</strong>:<br>'+
+        alerts.slice(0,3).map(function(al){
+          var ico=al.nivel==='rojo'?'🔴':'🟡';
+          return ico+' <strong>'+al.cat+'</strong>: '+al.pp+'% ejecutado — te quedan '+$c(al.disp)+'.';
+        }).join('<br>')+'<br><br>';
+    } else {
+      alertTxt='✅ Todas las partidas en verde — sin desvíos detectados.<br><br>';
+    }
+    setTimeout(function(){cfActions([
+      {label:'📋 Ver comprobantes',fn:"navigate('gastos')"},
+      {label:'📊 ¿En qué gasté más?',fn:'cfAsk(0)'},
+      {label:'🔮 ¿Me alcanza hasta fin de año?',fn:'cfAsk(1)'},
+      {label:'💸 Simular un gasto',fn:'cfAsk(2)'}
+    ]);},700);
+    return alertTxt+'En total llevás el <strong>'+pp+'%</strong> del presupuesto anual y '+est+'. Te quedan <strong>'+$c(queda)+'</strong> para el año.';
   }
   if(r==='admin'){
     var pend=cfPendientes().length,borr=cfBorradores();
-    return 'Tu tablero de control administrativo:<br>• <strong>'+pend+'</strong> solicitud'+(pend!==1?'es':'')+' de revisión pendiente'+(pend!==1?'s':'')+'.<br>• <strong>'+borr.length+'</strong> presupuesto'+(borr.length!==1?'s':'')+' sin aprobar'+(borr.length?' ('+borr.map(function(b){return b.area;}).join(', ')+')':'')+'.<br>• Detecté <strong>7 comprobantes</strong> con posible imputación incorrecta.<br>¿Por dónde empezamos?';
+    var allAlerts=CF_PLAN.filter(function(p){return cfAlertasArea(p.area).some(function(a){return a.nivel==='rojo';});});
+    setTimeout(function(){cfActions([
+      {label:'📋 Ver solicitudes pendientes',fn:'cfAsk(1)'},
+      {label:'✅ Presupuestos sin aprobar',fn:'cfAsk(2)'},
+      {label:'🔍 Gastos mal clasificados',fn:'cfAsk(0)'},
+      {label:'📊 Ver reportes',fn:"navigate('reportes')"}
+    ]);},700);
+    return 'Tu tablero de control hoy:<br>'+
+      (pend?'🔴 <strong>'+pend+'</strong> solicitud'+(pend!==1?'es':'')+' pendiente'+(pend!==1?'s':'')+' de revisión.<br>':'✅ Sin solicitudes pendientes.<br>')+
+      (borr.length?'🟡 <strong>'+borr.length+'</strong> presupuesto'+(borr.length!==1?'s':'')+' sin aprobar: '+borr.map(function(b){return b.area;}).join(', ')+'.<br>':'✅ Todos los presupuestos aprobados.<br>')+
+      (allAlerts.length?'🔴 <strong>'+allAlerts.length+' área'+(allAlerts.length>1?'s':'')+' con partidas en rojo</strong>: '+allAlerts.map(function(p){return p.area;}).join(', ')+'.<br>':'✅ Sin áreas en rojo.<br>')+
+      '• Detecté <strong>7 comprobantes</strong> con posible imputación incorrecta.<br>¿Por dónde empezamos?';
   }
-  var totB=CF_PLAN.reduce(function(s,p){return s+p.budget;},0),totE=CF_PLAN.reduce(function(s,p){return s+cfEjecYTD(p.area);},0);
+  var totB=CF_PLAN.reduce(function(s,p){return s+p.budget;},0);
+  var totE=CF_PLAN.reduce(function(s,p){return s+cfEjecYTD(p.area);},0);
   var pg=pct(totE,CF_PLAN.reduce(function(s,p){return s+cfBudYTD(p.area);},0)||1);
   var ries=cfAreasRiesgo();
-  return 'La foto de la empresa hoy:<br>• Ejecución global del período: <strong>'+pg+'%</strong> ('+cfM(totE)+' de '+cfM(totB)+' anual).<br>• Áreas en riesgo de pasarse: <strong>'+(ries.length?ries.map(function(p){return p.area;}).join(', '):'ninguna')+'</strong>.<br>• '+cfBorradores().length+' presupuesto(s) esperando tu aprobación.<br>¿Qué querés analizar o decidir?';
+  var riesDetail=ries.map(function(p){
+    var pp=pct(cfEjecYTD(p.area)/CF_MES.length*12,p.budget);
+    return '🔴 <strong>'+p.area+'</strong>: proyecta ~'+pp+'% al cierre.';
+  }).join('<br>');
+  var borr=cfBorradores();
+  setTimeout(function(){cfActions([
+    {label:'📊 Áreas en riesgo',fn:'cfAsk(0)'},
+    {label:'📈 Eficiencia del gasto',fn:'cfAsk(1)'},
+    {label:'🔮 Escenario 2027',fn:'cfAsk(2)'},
+    {label:'✅ Pendientes de aprobación',fn:'cfAsk(3)'}
+  ]);},700);
+  return 'La foto de la empresa al '+new Date().toLocaleDateString('es-AR',{day:'numeric',month:'long'})+':<br>'+
+    '• Ejecución global del período: <strong>'+pg+'%</strong> ('+cfM(totE)+' de '+cfM(totB)+' anual).<br>'+
+    (ries.length?'<br>Áreas en riesgo de excederse:<br>'+riesDetail+'<br>':'• ✅ Ninguna área proyecta excederse.<br>')+
+    (borr.length?'<br>• 🟡 <strong>'+borr.length+'</strong> presupuesto'+(borr.length!==1?'s':'')+' esperando tu aprobación.<br>':'')+'<br>¿Qué querés analizar?';
 }
 var CF_QA={
   responsable:[
