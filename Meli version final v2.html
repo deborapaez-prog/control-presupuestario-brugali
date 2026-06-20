@@ -2379,10 +2379,10 @@ var CF_QA={
      keys:['alcanza','fin','año','llegar','sobra','déficit','deficit','queda','resto','cierre'],
      a:function(){var a=cfUserArea();var parts=cfPartidas(a);var bud=parts.reduce(function(s,p){return s+p.budget;},0);var sp=parts.reduce(function(s,p){return s+p.spent;},0);var proy=pct(sp/CF_MES.length*12,bud||1);return proy<=100?('Sí. A tu ritmo terminarías el año en el <strong>'+proy+'%</strong>. '+(proy<=80?'Margen de sobra.':'Algo justo, pero llegás.')):('⚠️ Ojo: proyectás <strong>'+proy+'%</strong>, te pasarías. Conviene frenar gastos no esenciales o pedir ampliación.');}},
     {q:'¿Puedo gastar $X? (probá con un monto)',
-     keys:['puedo','gastar','autoriza','permiso','aprobar','aprobacion','cuánto puedo','cuanto puedo'],
+     keys:['gastar','autoriza','permiso','aprobacion','cuanto puedo gastar','puedo gastar'],
      a:'Escribime el monto, por ejemplo <strong>"puedo gastar 200000"</strong>, y te digo si entra y si necesitás autorización. 🟢🟡🔴'},
     {q:'¿Dónde puedo recortar o reasignar saldo?',
-     keys:['recortar','recort','reasig','menos','ahorra','liberar','transfer','optimiz','reducir','donde','econom','bajar','ajustar'],
+     keys:['recortar','recort','reasig','menos','ahorra','liberar','transfer','optimiz','reducir','donde','econom','bajar','ajustar','correc','mejora','arreglar','solucionar'],
      a:function(){var a=cfUserArea();var parts=cfPartidas(a).slice().sort(function(x,y){return (x.spent/x.budget)-(y.spent/y.budget);});var m=parts[0];var mayor=parts.slice().sort(function(x,y){return y.spent-x.spent;})[0];return m?('<strong>Partida con más margen libre:</strong> <strong>'+m.cat+'</strong> ('+pct(m.spent,m.budget)+'% usado, te quedan '+$c(m.disp)+'). Podés pedir reasignar ese saldo.<br><br><strong>Donde más se gasta</strong>: <strong>'+mayor.cat+'</strong> ('+$c(mayor.spent)+'). Ahí hay más oportunidad de ajuste.'):'Sin datos suficientes aún.'}},
     {q:'¿Qué alertas tiene mi área?',
      keys:['alerta','riesgo','peligro','exceder','pasar','rojo','amarillo','desvio','desvío','problema'],
@@ -2473,9 +2473,9 @@ function cfSend(){
     return;
   }
 
-  // Simulador numérico
+  // Simulador numérico: requiere número explícito + palabra de gasto
   var num=parseFloat((t.replace(/[.\s]/g,'').match(/\d+/)||[])[0]);
-  if(num&&num>0 && /gast|puedo|alcanza|cuest|monto|autoriza/.test(low)){
+  if(num&&num>0 && /gast|alcanza|cuest|monto/.test(low)){
     setTimeout(function(){cfMsg('cf-b',cfSimTexto(num));},450);return;
   }
 
