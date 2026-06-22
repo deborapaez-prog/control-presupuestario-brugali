@@ -888,11 +888,17 @@ function setGastosDirFilter(f,v){if(f==='y')GASTOS_DIR_YEAR=v;else if(f==='m')GA
 function getSolPres(){return JSON.parse(localStorage.getItem('b_sol_pres')||'[]');}
 function saveSolPresLS(arr){localStorage.setItem('b_sol_pres',JSON.stringify(arr));}
 function openSolPresModal(){
+  var esDir=CU.role==='gerencia';
   $('mTitle').textContent='Solicitar Presupuesto';
   $('mBody').innerHTML=`
     <div style="background:var(--primary-light,#ede9fe);border-left:3px solid var(--primary);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:16px;font-size:12.5px;color:var(--text)">
-      Completá el formulario y el administrador recibirá tu solicitud para revisar y aprobar el presupuesto de <strong>${CU.area}</strong>.
+      Completá el formulario y el administrador recibirá tu solicitud para revisar y aprobar el presupuesto${esDir?'.':' de <strong>'+CU.area+'</strong>.'}
     </div>
+    ${esDir?`<div class="fg"><label>Área</label>
+      <select class="input" id="solArea">
+        ${AREAS.map(function(a){return'<option value="'+a.name+'">'+a.name+'</option>';}).join('')}
+      </select>
+    </div>`:''}
     <div class="fg"><label>Año fiscal</label>
       <select class="input" id="solAnio">
         <option value="2026">2026</option>
@@ -917,15 +923,17 @@ function submitSolPres(){
   var just=($('solJustif').value||'').trim();
   if(!monto){alert('Ingresá un monto.');return;}
   if(!just){alert('Completá la justificación.');return;}
+  var areaEl=document.getElementById('solArea');
+  var area=areaEl?areaEl.value:CU.area;
   var arr=getSolPres();
-  arr.push({id:uid(),area:CU.area,anio,montoSolicitado:monto,justificacion:just,estado:'Pendiente',solicitadoPor:CU.name,fecha:new Date().toISOString(),observaciones:'',resueltoPor:'',fechaResolucion:''});
+  arr.push({id:uid(),area:area,anio,montoSolicitado:monto,justificacion:just,estado:'Pendiente',solicitadoPor:CU.name,fecha:new Date().toISOString(),observaciones:'',resueltoPor:'',fechaResolucion:''});
   saveSolPresLS(arr);
   closeModal();
   // Email al admin
   var adm=emailAdmin();
   enviarEmail(adm.email,adm.name,
-    '💰 Nueva solicitud de presupuesto — '+CU.area,
-    'Hola '+adm.name+',\n\n'+CU.name+' solicitó un presupuesto para '+CU.area+':\n\n'+
+    '💰 Nueva solicitud de presupuesto — '+area,
+    'Hola '+adm.name+',\n\n'+CU.name+' solicitó un presupuesto para '+area+':\n\n'+
     '• Año: '+anio+'\n• Monto solicitado: $'+monto.toLocaleString('es-AR')+
     '\n• Justificación: '+just+
     '\n\nIngresá al sistema para aprobarlo o rechazarlo.\n\nBrugali SAS — Control Presupuestario');
@@ -1275,7 +1283,8 @@ function renderPres(){
   const canEdit=CU.role==='admin';
   const isAdmin=CU.role==='admin';
   const isLider=CU.role==='responsable';
-  const PRES_VIEW=isAdmin?PRES:PRES.filter(p=>p.area===CU.area);
+  const isDir=CU.role==='gerencia';
+  const PRES_VIEW=isAdmin?PRES:isDir?PRES:PRES.filter(p=>p.area===CU.area);
   const total=PRES_VIEW.reduce((s,p)=>s+p.monto,0);
 
   // ── Banner según rol ──────────────────────────────
@@ -1321,7 +1330,7 @@ function renderPres(){
       </table></div></div>
     </div>`:
     // Lider ve sus propias solicitudes enviadas
-    isLider&&solPres.filter(s=>s.solicitadoPor===CU.name).length>0?`
+    (isLider||isDir)&&solPres.filter(s=>s.solicitadoPor===CU.name).length>0?`
     <div class="card" style="margin-bottom:18px;border-color:#bbf7d0">
       <div class="card-hd" style="background:#f0fdf4">
         <h3 style="color:#15803d">Mis solicitudes enviadas</h3>
@@ -1370,8 +1379,8 @@ function renderPres(){
       </div>
     </div>`;
 
-  // ── Sección solicitar presupuesto (solo Lider) ────
-  const solicitarHTML=isLider?`
+  // ── Sección solicitar presupuesto (Lider y Dirección) ────
+  const solicitarHTML=(isLider||isDir)?`
     <div class="card" style="margin-top:18px;border-style:dashed;border-color:var(--primary,#7c3aed)">
       <div class="card-hd" style="background:var(--primary-light,#ede9fe)">
         <h3 style="color:var(--primary,#7c3aed)">Solicitar un presupuesto al administrador</h3>
