@@ -229,6 +229,7 @@ thead th.th-sort.active .sort-arrow{opacity:1}
 .section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px;margin-top:18px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 .modal .mc{max-height:65vh;overflow-y:auto}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -318,6 +319,30 @@ thead th.th-sort.active .sort-arrow{opacity:1}
 </div>
 
 <script>
+// ── EMAILJS CONFIG ─────────────────────────────────
+// 1. Creá cuenta gratis en https://www.emailjs.com
+// 2. Agregá un servicio de email (Gmail, Outlook, etc.)
+// 3. Creá un template con variables: {{to_email}}, {{to_name}}, {{subject}}, {{message}}
+// 4. Reemplazá los tres valores de abajo
+const EJS_PUBLIC_KEY  = 'TU_PUBLIC_KEY';   // Account → API Keys
+const EJS_SERVICE_ID  = 'TU_SERVICE_ID';   // Email Services → Service ID
+const EJS_TEMPLATE_ID = 'TU_TEMPLATE_ID';  // Email Templates → Template ID
+
+function enviarEmail(toEmail, toName, subject, message){
+  if(!EJS_PUBLIC_KEY||EJS_PUBLIC_KEY==='TU_PUBLIC_KEY')return; // no configurado aún
+  if(typeof emailjs==='undefined')return;
+  emailjs.init({publicKey:EJS_PUBLIC_KEY});
+  emailjs.send(EJS_SERVICE_ID, EJS_TEMPLATE_ID, {
+    to_email: toEmail,
+    to_name:  toName,
+    subject:  subject,
+    message:  message
+  }).catch(function(e){console.warn('EmailJS error:',e);});
+}
+
+function emailAdmin(){return USERS.find(function(u){return u.role==='admin';})||{};}
+function emailByName(name){return USERS.find(function(u){return u.name===name;})||{};}
+
 // ── CONSTANTS ──────────────────────────────────────
 const SHEET_ID    = '1OpIzu2KOL-WCsKYCqQW2RifTfMC6nX7UqIPwUiF2uP8';
 const SHEET_HOJAS = ['egresos de fondos','compras por concepto','compras por articulo'];
@@ -896,6 +921,14 @@ function submitSolPres(){
   arr.push({id:uid(),area:CU.area,anio,montoSolicitado:monto,justificacion:just,estado:'Pendiente',solicitadoPor:CU.name,fecha:new Date().toISOString(),observaciones:'',resueltoPor:'',fechaResolucion:''});
   saveSolPresLS(arr);
   closeModal();
+  // Email al admin
+  var adm=emailAdmin();
+  enviarEmail(adm.email,adm.name,
+    '💰 Nueva solicitud de presupuesto — '+CU.area,
+    'Hola '+adm.name+',\n\n'+CU.name+' solicitó un presupuesto para '+CU.area+':\n\n'+
+    '• Año: '+anio+'\n• Monto solicitado: $'+monto.toLocaleString('es-AR')+
+    '\n• Justificación: '+just+
+    '\n\nIngresá al sistema para aprobarlo o rechazarlo.\n\nBrugali SAS — Control Presupuestario');
   updateNotifBadge();
   renderPres();
 }
@@ -924,6 +957,16 @@ function resolveSolPres(id,accion){
     }
     saveLS();
   }
+  // Email a quien solicitó
+  var solicitante=emailByName(sol.solicitadoPor);
+  var estadoLabel=accion==='aprobar'?'✅ Aprobado':'❌ Rechazado';
+  enviarEmail(solicitante.email,sol.solicitadoPor,
+    estadoLabel+' — Presupuesto '+sol.area+' '+sol.anio,
+    'Hola '+sol.solicitadoPor+',\n\nTu solicitud de presupuesto fue '+estadoLabel.toLowerCase()+'.\n\n'+
+    '• Área: '+sol.area+'\n• Año: '+sol.anio+
+    '\n• Monto solicitado: $'+Math.round(sol.montoSolicitado).toLocaleString('es-AR')+
+    (obs?'\n• Observación: '+obs:'')+
+    '\n\nIngresá al sistema para ver el detalle.\n\nBrugali SAS — Control Presupuestario');
   updateNotifBadge();
   renderPres();
 }
@@ -1559,6 +1602,13 @@ function confirmarAjuste(egr){
   var solicitudes=JSON.parse(localStorage.getItem('b_ajustes')||'[]');
   solicitudes.push({id:uid(),egr:egr,motivo:motivo,detalle:detalle,destinatario:destinatario,by:CU.name,area:CU.area||'',fecha:new Date().toISOString(),resuelto:false});
   localStorage.setItem('b_ajustes',JSON.stringify(solicitudes));
+  // Email al admin
+  var adm=emailAdmin();
+  enviarEmail(adm.email,adm.name,
+    '🔔 Nueva solicitud de revisión — '+egr,
+    'Hola '+adm.name+',\n\n'+CU.name+' ('+CU.area+') solicitó una revisión:\n\n'+
+    '• Comprobante: '+egr+'\n• Motivo: '+motivo+'\n• Detalle: '+detalle+
+    '\n\nIngresá al sistema para resolverla.\n\nBrugali SAS — Control Presupuestario');
   // Feedback visual
   var btns=document.querySelectorAll('[data-egr="'+egr+'"]');
   btns.forEach(function(b){
@@ -1643,6 +1693,18 @@ function confirmarResolucion(id){
     return a;
   });
   localStorage.setItem('b_ajustes',JSON.stringify(ajustes));
+  // Email a quien pidió la revisión
+  var ajResuelto=JSON.parse(localStorage.getItem('b_ajustes')||'[]').find(function(a){return a.id===id;});
+  if(ajResuelto){
+    var solicitante=emailByName(ajResuelto.by);
+    var accionLabel=sel.value==='aceptar'?'✅ Aceptada':'❌ Rechazada';
+    enviarEmail(solicitante.email,solicitante.name,
+      accionLabel+' — Revisión de '+ajResuelto.egr,
+      'Hola '+ajResuelto.by+',\n\nTu solicitud de revisión fue '+accionLabel.toLowerCase()+'.\n\n'+
+      '• Comprobante: '+ajResuelto.egr+'\n• Motivo: '+ajResuelto.motivo+
+      (obs?'\n• Observación de administración: '+obs:'')+
+      '\n\nIngresá al sistema para ver el detalle.\n\nBrugali SAS — Control Presupuestario');
+  }
   var modal=document.getElementById('resolModal');
   if(modal)modal.remove();
   renderImportar();
