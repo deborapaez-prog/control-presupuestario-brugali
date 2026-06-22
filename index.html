@@ -543,10 +543,23 @@ let PRES  = [];
 let GDATA = [...SHEET_RAW];
 let SYNC  = {status:'idle',lastSync:null,msg:'Datos pre-cargados',count:SHEET_RAW.length};
 let DASH_TAB = 'resumen';
-let DASH_YEAR = '';  // '' = todos los años
-let DASH_MES  = '';  // '' = todos
+let DASH_YEAR = '2026';
+let DASH_MES  = '';
+let DASH_AREA_SEL = []; // [] = todas
+let DASH_MES_SEL  = []; // [] = todos
 // Reportes filters
-let REP_YEAR = '', REP_MES = '', REP_AREA = '', REP_CAT = '';
+let REP_YEAR = '2026', REP_MES = '', REP_AREA = '', REP_CAT = '';
+let REP_AREAS_SEL = [];
+// Control filters
+let CTRL_AREAS_SEL = [];
+let CTRL_YEAR_SEL  = '';
+let CTRL_CAT_YEAR  = '';
+let GASTOS_YEAR_SEL = '';
+let GASTOS_MES_OPEN = {};
+let GASTOS_DIR_YEAR = '';
+let GASTOS_DIR_MES  = '';
+let GASTOS_DIR_AREA = '';
+let GASTOS_DIR_CAT  = '';
 // Modal distribution state
 let CURR_DIST = 'uniforme';
 let CURR_MEN  = {};
@@ -661,7 +674,7 @@ function startApp(){
   $('loginScreen').style.display='none';
   $('appScreen').style.display='block';
   $('tbDate').textContent=todayStr();
-  renderTbUser();renderSidebar();renderSyncPill();navigate('dashboard');updateNotifBadge();
+  renderTbUser();renderSidebar();renderSyncPill();navigate('dashboard');autoCrearPresupuestos2026();updateNotifBadge();
   // Auto-sync from Google Sheets on login (non-blocking)
   setTimeout(()=>doSync(),800);
 }
@@ -819,6 +832,126 @@ function makeCategorySection(gFilt){
   </div>`;
 }
 
+// ── MULTI-SELECT BUTTON HELPERS ──────────────────
+function _areaBtns(sel,fn,avAreas){
+  if(typeof CU!=='undefined'&&CU&&CU.role==='responsable')return '';
+  const all=sel.length===0;
+  const bS=(active,col)=>active?`background:${col};color:#fff;border-color:${col}`:`background:var(--card);color:var(--muted);border-color:var(--border)`;
+  return`<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+    <button onclick="${fn}('__all__')" style="${bS(all,'var(--primary)')};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border-style:solid;border-width:1.5px;transition:all .15s">Todas</button>
+    ${avAreas.map(a=>{const ao=AREAS.find(x=>x.name===a);const col=ao?ao.color:'#6b7280';const ac=sel.includes(a);return`<button onclick="${fn}('${a}')" style="${bS(ac,col)};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border-style:solid;border-width:1.5px;transition:all .15s"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${ac?'#fff':col};margin-right:4px;vertical-align:middle"></span>${a}</button>`;}).join('')}
+  </div>`;
+}
+function _mesBtns(sel,fn){
+  const all=sel.length===0;
+  const bS=active=>active?'background:var(--primary);color:#fff;border-color:var(--primary)':'background:var(--card);color:var(--muted);border-color:var(--border)';
+  return`<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+    <button onclick="${fn}('__all__')" style="${bS(all)};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border-style:solid;border-width:1.5px">Todos</button>
+    ${MESES.map(m=>`<button onclick="${fn}('${m.k}')" style="${bS(sel.includes(m.k))};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border-style:solid;border-width:1.5px">${m.l.slice(0,3)}</button>`).join('')}
+  </div>`;
+}
+function dashToggleArea(a){if(a==='__all__'){DASH_AREA_SEL=[];}else{const i=DASH_AREA_SEL.indexOf(a);if(i>=0)DASH_AREA_SEL.splice(i,1);else DASH_AREA_SEL.push(a);}renderDash();}
+function dashToggleMes(m){if(m==='__all__'){DASH_MES_SEL=[];}else{const i=DASH_MES_SEL.indexOf(m);if(i>=0)DASH_MES_SEL.splice(i,1);else DASH_MES_SEL.push(m);}renderDash();}
+function ctrlToggleArea(a){if(a==='__all__'){CTRL_AREAS_SEL=[];}else{const i=CTRL_AREAS_SEL.indexOf(a);if(i>=0)CTRL_AREAS_SEL.splice(i,1);else CTRL_AREAS_SEL.push(a);}renderControl();}
+function ctrlToggleYear(y){CTRL_YEAR_SEL=CTRL_YEAR_SEL===y?'':y;renderControl();}
+function repToggleArea(a){if(a==='__all__'){REP_AREAS_SEL=[];}else{const i=REP_AREAS_SEL.indexOf(a);if(i>=0)REP_AREAS_SEL.splice(i,1);else REP_AREAS_SEL.push(a);}renderReportes();}
+function repToggleYear(y){REP_YEAR=REP_YEAR===y?'':y;renderReportes();}
+function ctrlToggleCatYear(y){CTRL_CAT_YEAR=CTRL_CAT_YEAR===y?'':y;renderControl();}
+function gastosToggleYear(y){GASTOS_YEAR_SEL=GASTOS_YEAR_SEL===y?'':y;GASTOS_MES_OPEN={};renderGastos();}
+function gastosToggleMes(k){GASTOS_MES_OPEN[k]=!GASTOS_MES_OPEN[k];renderGastos();}
+function setGastosDirFilter(f,v){if(f==='y')GASTOS_DIR_YEAR=v;else if(f==='m')GASTOS_DIR_MES=v;else if(f==='a')GASTOS_DIR_AREA=v;else if(f==='c')GASTOS_DIR_CAT=v;renderGastos();}
+function getSolPres(){return JSON.parse(localStorage.getItem('b_sol_pres')||'[]');}
+function saveSolPresLS(arr){localStorage.setItem('b_sol_pres',JSON.stringify(arr));}
+function openSolPresModal(){
+  $('mTitle').textContent='Solicitar Presupuesto';
+  $('mBody').innerHTML=`
+    <div style="background:var(--primary-light,#ede9fe);border-left:3px solid var(--primary);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:16px;font-size:12.5px;color:var(--text)">
+      Completá el formulario y el administrador recibirá tu solicitud para revisar y aprobar el presupuesto de <strong>${CU.area}</strong>.
+    </div>
+    <div class="fg"><label>Año fiscal</label>
+      <select class="input" id="solAnio">
+        <option value="2026">2026</option>
+        <option value="2027">2027</option>
+      </select>
+    </div>
+    <div class="fg"><label>Monto solicitado</label>
+      <div class="input-pref"><span>$</span>
+        <input class="input" type="number" id="solMonto" min="0" step="1000" placeholder="0">
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:0"><label>Justificación</label>
+      <textarea class="input" id="solJustif" rows="3" placeholder="Explicá brevemente por qué se necesita este presupuesto…" style="resize:vertical"></textarea>
+    </div>`;
+  $('mFoot').innerHTML=`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="submitSolPres()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 20-7z"/></svg>Enviar solicitud</button>`;
+  $('modalOv').style.display='flex';
+}
+function submitSolPres(){
+  var anio=parseInt($('solAnio').value);
+  var monto=parseFloat($('solMonto').value)||0;
+  var just=($('solJustif').value||'').trim();
+  if(!monto){alert('Ingresá un monto.');return;}
+  if(!just){alert('Completá la justificación.');return;}
+  var arr=getSolPres();
+  arr.push({id:uid(),area:CU.area,anio,montoSolicitado:monto,justificacion:just,estado:'Pendiente',solicitadoPor:CU.name,fecha:new Date().toISOString(),observaciones:'',resueltoPor:'',fechaResolucion:''});
+  saveSolPresLS(arr);
+  closeModal();
+  updateNotifBadge();
+  renderPres();
+}
+function resolveSolPres(id,accion){
+  var obs=(document.getElementById('solObs_'+id)||{}).value||'';
+  var arr=getSolPres();
+  var sol=arr.find(s=>s.id===id);
+  if(!sol)return;
+  sol.estado=accion==='aprobar'?'Aprobado':'Rechazado';
+  sol.observaciones=obs;
+  sol.resueltoPor=CU.name;
+  sol.fechaResolucion=new Date().toISOString();
+  saveSolPresLS(arr);
+  if(accion==='aprobar'){
+    const monto=Math.round(sol.montoSolicitado/1000)*1000;
+    const cuota=Math.round(monto/12);
+    const mensual={};MESES.forEach(m=>{mensual[m.k]=cuota;});
+    const idx=PRES.findIndex(p=>p.area===sol.area&&p.anio===sol.anio&&p.estado==='Borrador');
+    if(idx>=0){
+      PRES[idx].monto=monto;PRES[idx].mensual=mensual;
+      PRES[idx].estado='Activo';PRES[idx].tipo='Aprobado';
+      PRES[idx].desc='Aprobado desde solicitud: '+sol.justificacion.slice(0,60);
+      PRES[idx].by=CU.name;
+    } else {
+      PRES.push({id:uid(),area:sol.area,anio:sol.anio,monto,tipo:'Aprobado',estado:'Activo',distribucion:'uniforme',mensual,desc:'Aprobado desde solicitud: '+sol.justificacion.slice(0,60),by:CU.name});
+    }
+    saveLS();
+  }
+  updateNotifBadge();
+  renderPres();
+}
+function cancelSolPres(id){
+  if(!confirm('¿Cancelar esta solicitud?'))return;
+  var arr=getSolPres().filter(s=>s.id!==id);
+  saveSolPresLS(arr);
+  renderPres();
+}
+function sectionBanner(icon,title,desc){return`<div style="background:var(--primary-light,#ede9fe);border-left:4px solid var(--primary,#7c3aed);border-radius:var(--r-sm,8px);padding:12px 16px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start"><span style="font-size:20px;flex-shrink:0;line-height:1.3">${icon}</span><div><div style="font-size:13px;font-weight:700;color:var(--primary,#7c3aed);margin-bottom:3px">${title}</div><div style="font-size:12.5px;color:#374151;line-height:1.55">${desc}</div></div></div>`;}
+function autoCrearPresupuestos2026(){
+  if(PRES.some(p=>p.anio===2026))return;
+  const cfRef={'Dirección':28000000,'Administración y Finanzas':21000000,
+    'Operaciones':82000000,'Compras':35000000,'Logística':46000000,'Producción':120000000};
+  AREAS.forEach(a=>{
+    const base2025=GDATA.filter(g=>g.per&&g.per.endsWith('/25')&&(g.area||'RRHH')===a.name)
+      .reduce((s,g)=>s+g.monto,0);
+    const base=base2025||(cfRef[a.name]||0);
+    if(!base)return;
+    const monto=Math.round(base*1.5/1000)*1000;
+    const cuota=Math.round(monto/12);
+    const mensual={};MESES.forEach(m=>{mensual[m.k]=cuota;});
+    PRES.push({id:uid(),area:a.name,anio:2026,monto,tipo:'Histórico',estado:'Borrador',
+      distribucion:'uniforme',mensual,desc:'Estimado automático: base 2025 + 50%',by:'Sistema'});
+  });
+  saveLS();
+}
+
 // ── DASHBOARD ─────────────────────────────────────
 function renderDash(){
   // Filter gastos by year/month
@@ -826,7 +959,15 @@ function renderDash(){
     if(!g.per)return false;
     const yy=g.per.length===6?'20'+g.per.slice(4):g.per.slice(4);
     if(DASH_YEAR&&yy!==DASH_YEAR)return false;
-    if(DASH_MES&&!g.per.startsWith(DASH_MES))return false;
+    if(CU.role==='responsable'&&(g.area||'RRHH')!==CU.area)return false;
+    return true;
+  });
+  const gFiltDetalle=GDATA.filter(g=>{
+    if(!g.per)return false;
+    const yy=g.per.length===6?'20'+g.per.slice(4):g.per.slice(4);
+    if(DASH_YEAR&&yy!==DASH_YEAR)return false;
+    if(DASH_MES_SEL.length&&!DASH_MES_SEL.includes(g.per.split('/')[0]))return false;
+    if(DASH_AREA_SEL.length&&!DASH_AREA_SEL.includes(g.area||'RRHH'))return false;
     if(CU.role==='responsable'&&(g.area||'RRHH')!==CU.area)return false;
     return true;
   });
@@ -981,26 +1122,96 @@ function renderDash(){
       </table></div></div>
     </div>`:'';
 
-  // Detalle tab: full presupuesto info with monthly breakdown + pie chart
+  // Detalle tab: con filtros de área y mes multi-select
+  const avAreasD=[...new Set(GDATA.filter(g=>g.per&&('20'+g.per.slice(4))===DASH_YEAR).map(g=>g.area||'RRHH'))];
   const detalle=`
-    ${makeCategorySection(gFilt)}
+    <div style="margin-bottom:16px">
+      ${CU.role!=='responsable'?`<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📍 Área</div>
+      ${_areaBtns(DASH_AREA_SEL,'dashToggleArea',avAreasD)}`:''}
+    </div>
+    <div style="margin-bottom:18px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📅 Mes</div>
+      ${_mesBtns(DASH_MES_SEL,'dashToggleMes')}
+    </div>
+    ${makeCategorySection(gFiltDetalle)}
   `;
 
-  
+
   $('dContent').innerHTML=`
+    ${CU.role==='responsable'
+      ?sectionBanner('📊','Mi Dashboard — '+CU.area,'Seguimiento del presupuesto de tu área. El <strong>Resumen</strong> muestra el estado de ejecución, el saldo disponible y la alerta de riesgo. En <strong>Detalle</strong> podés filtrar tus gastos por mes y categoría.')
+      :CU.role==='gerencia'
+        ?sectionBanner('📊','Dashboard Ejecutivo','Estado presupuestario consolidado de toda la empresa. Revisá la ejecución de cada área, la proyección al cierre del año y los días de presupuesto disponibles por centro de costo.')
+        :sectionBanner('📊','Dashboard Administrativo','Vista completa del tablero. Resumen ejecutivo con KPIs de todas las áreas, proyección al cierre del año y días de presupuesto disponible. Usá la pestaña Detalle para filtrar por área y mes.')}
     <div class="tabs">${tab('resumen','Resumen Ejecutivo')}${tab('detalle','Detalle de Presupuesto')}</div>
     <div class="fbar">
-      <div class="fbar-label">📅 Período</div>
-      <select class="input" style="width:auto;min-width:120px" id="dashYear" onchange="DASH_YEAR=this.value;renderDash()">
+      <div class="fbar-label">📅 Año</div>
+      <select class="input" style="width:auto;min-width:120px" id="dashYear" onchange="DASH_YEAR=this.value;DASH_AREA_SEL=[];DASH_MES_SEL=[];renderDash()">
         <option value="">Todos los años</option>
         ${[...new Set(GDATA.map(g=>g.per?'20'+g.per.slice(4):null).filter(Boolean))].sort().reverse().map(y=>`<option value="${y}"${DASH_YEAR===y?' selected':''}>${y}</option>`).join('')}
       </select>
-      <select class="input" style="width:auto;min-width:150px" id="dashMes" onchange="DASH_MES=this.value;renderDash()">
-        <option value="">Todos los meses</option>
-        ${MESES.map(m=>`<option value="${m.k}"${DASH_MES===m.k?' selected':''}>${m.l}</option>`).join('')}
-      </select>
     </div>
-    ${DASH_TAB==='resumen'?resumen+areaGrid:detalle}
+    ${DASH_TAB==='resumen'?resumen+areaGrid+(()=>{
+      // ── Proyección al cierre ──────────────────────────────────────────
+      if(CU.role==='responsable')return'';
+      const mesesConD=[...new Set(gFilt.map(g=>g.per).filter(Boolean))].length||1;
+      const tasaM=totG/mesesConD;
+      const proyA=Math.round(tasaM*12);
+      const margenP=totP-proyA;
+      const pctP=pct(proyA,totP||1);
+      const pctPCol=pctP>100?'var(--danger)':pctP>90?'var(--warning)':'var(--success)';
+      const kpis=[['Presupuesto',totP,'var(--primary)','Anual '+(DASH_YEAR||'')],['Gasto mes '+mesesConD,totG,'var(--text)',pct(totG,totP||1)+'% del total'],['Proyección dic.',proyA,pctPCol,pctP+'% del presupuesto'],['Margen estimado',margenP,margenP>=0?'var(--success)':'var(--danger)',margenP>=0?'Bajo presupuesto':'Por encima']];
+      const cfPlanDisp2=typeof CF_PLAN!=='undefined';
+      return`<div class="card" style="margin-top:18px">
+        <div class="card-hd"><h3>Proyección al Cierre</h3><span class="badge bg-gray" style="font-size:11px">Ritmo actual × 12 meses</span></div>
+        <div class="card-bd">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
+            ${kpis.map(([l,v,c,s])=>`<div style="background:var(--bg);border-radius:var(--r-sm);padding:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">${l}</div>
+              <div style="font-size:18px;font-weight:800;color:${c}">${$c(v)}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${s}</div>
+            </div>`).join('')}
+          </div>
+          ${cfPlanDisp2?`<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Proyección por área</div>
+          ${CF_PLAN.map(p=>{
+            const gastA=GDATA.filter(g=>(g.area||'RRHH')===p.area).reduce((s,g)=>s+g.monto,0);
+            const mesesA=[...new Set(GDATA.filter(g=>(g.area||'RRHH')===p.area).map(g=>g.per).filter(Boolean))].length||1;
+            const presA=PRES.filter(pr=>pr.area===p.area&&pr.anio===+(DASH_YEAR||2026)).reduce((s,pr)=>s+pr.monto,0)||p.budget;
+            const proyAr=Math.round(gastA/mesesA*12);
+            const ppA=pct(proyAr,presA||1);
+            const col=ppA>100?'var(--danger)':ppA>90?'var(--warning)':'var(--success)';
+            return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${aCol(p.area)};flex-shrink:0"></span>
+              <span style="font-size:12px;color:var(--text);width:160px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.area}</span>
+              <div class="pbar" style="flex:1;height:7px"><div class="fill" style="width:${clamp(ppA,0,100)}%;background:${col}"></div></div>
+              <span style="font-size:12px;font-weight:700;color:${col};min-width:44px;text-align:right">${ppA}%</span>
+              <span style="font-size:11px;color:var(--muted);min-width:90px;text-align:right">Proy. ${$c(proyAr)}</span>
+            </div>`;
+          }).join('')}`:''}
+        </div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="card-hd"><h3>Días de Presupuesto Disponible</h3><span class="badge bg-gray" style="font-size:11px">Al ritmo de gasto actual por área</span></div>
+        <div class="card-bd">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+            ${cfPlanDisp2?CF_PLAN.map(p=>{
+              const gastA=GDATA.filter(g=>(g.area||'RRHH')===p.area).reduce((s,g)=>s+g.monto,0);
+              const mesesA=[...new Set(GDATA.filter(g=>(g.area||'RRHH')===p.area).map(g=>g.per).filter(Boolean))].length||1;
+              const presA=PRES.filter(pr=>pr.area===p.area&&pr.anio===+(DASH_YEAR||2026)).reduce((s,pr)=>s+pr.monto,0)||p.budget;
+              const saldoA=presA-gastA;
+              const tasaDiaria=gastA/(mesesA*30);
+              const dias=tasaDiaria>0?Math.round(saldoA/tasaDiaria):999;
+              const col=dias<20?'var(--danger)':dias<45?'var(--warning)':'var(--success)';
+              return`<div style="background:var(--bg);border-radius:var(--r-sm);padding:14px;text-align:center">
+                <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.area}</div>
+                <div style="font-size:22px;font-weight:800;color:${col}">${dias>998?'∞':Math.max(0,dias)}<span style="font-size:12px;font-weight:400"> días</span></div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">${$c(Math.max(0,saldoA))} saldo</div>
+              </div>`;
+            }).join(''):''}
+          </div>
+        </div>
+      </div>`;
+    })():detalle}
   `;
 }
 function setDashTab(t){DASH_TAB=t;renderDash();}
@@ -1020,32 +1231,119 @@ function periodoTable(gFilt){
 function renderPres(){
   const canEdit=CU.role==='admin';
   const isAdmin=CU.role==='admin';
-  // Usuarios no-admin solo ven el presupuesto de su área
+  const isLider=CU.role==='responsable';
   const PRES_VIEW=isAdmin?PRES:PRES.filter(p=>p.area===CU.area);
   const total=PRES_VIEW.reduce((s,p)=>s+p.monto,0);
-  $('pContent').innerHTML=`
-    ${canEdit?`<div class="fbar"><button class="btn btn-primary" onclick="openPModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nuevo Presupuesto</button></div>`:''}
-    ${!isAdmin?`<div class="alert alert-info" style="margin-bottom:14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Mostrando presupuesto del área: <strong>${CU.area}</strong></div>`:''}
-    <div class="card"><div class="card-hd"><h3>Presupuestos Cargados <span class="badge bg-gray" style="margin-left:6px">${PRES_VIEW.length}</span></h3></div>
-    <div class="card-bd" style="padding:0">
-      ${PRES_VIEW.length===0?`<div class="empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><p>No hay presupuestos cargados para tu área.</p></div>`:`
-      <div class="tw"><table>
-        <thead><tr><th>Área</th><th>Año Fiscal</th><th>Monto Anual</th><th>Tipo</th><th>Estado</th><th>Distribución</th>${canEdit?'<th></th>':''}</tr></thead>
-        <tbody>${PRES_VIEW.map(p=>`<tr>
-          <td><span class="adot" style="background:${aCol(p.area)}"></span>${p.area}</td>
-          <td><span class="badge bg-blue">${p.anio}</span></td>
-          <td><strong>${$c(p.monto)}</strong></td>
-          <td><span class="badge bg-purple">${p.tipo||'—'}</span></td>
-          <td><span class="badge ${p.estado==='Activo'?'bg-green':p.estado==='Borrador'?'bg-gray':p.estado==='Cerrado'?'bg-red':'bg-orange'}">${p.estado||'—'}</span></td>
-          <td style="font-size:12px;color:var(--muted);text-transform:capitalize">${p.distribucion||'uniforme'}</td>
-          ${canEdit?`<td style="white-space:nowrap">
-            <button class="btn-icon" onclick="openPModal('${p.id}')" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></button>
-            <button class="btn-icon" onclick="delPres('${p.id}')" style="color:var(--danger);border-color:var(--danger-b)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
-          </td>`:''}
-        </tr>`).join('')}</tbody>
-      </table></div>
-      <div class="tfoot-row"><span>${PRES_VIEW.length} ítem${PRES_VIEW.length!==1?'s':''}</span><strong>${$c(total)}</strong></div>`}
-    </div></div>`;
+
+  // ── Banner según rol ──────────────────────────────
+  const banner=isLider
+    ?sectionBanner('💰','Mi Presupuesto — '+CU.area,'Consultá el presupuesto asignado a tu área para el año en curso. Si necesitás un presupuesto adicional o no tenés uno asignado, podés enviar una solicitud al administrador directamente desde esta pantalla.')
+    :isAdmin
+      ?sectionBanner('💰','Presupuestos','Gestión centralizada de presupuestos por área. Cargá, editá y aprobá los montos anuales. Las solicitudes enviadas por los líderes de área aparecen abajo para que las puedas revisar y aprobar con un clic.')
+      :sectionBanner('💰','Presupuestos por Área','Resumen de los presupuestos asignados a cada centro de costo para el año fiscal en curso.');
+
+  // ── Solicitudes pendientes para Admin ────────────
+  const solPres=getSolPres();
+  const solPend=solPres.filter(s=>s.estado==='Pendiente');
+  const solAdminHTML=isAdmin&&solPres.length>0?`
+    <div class="card" style="margin-bottom:18px;border-color:#bbf7d0">
+      <div class="card-hd" style="background:#f0fdf4">
+        <h3 style="color:#15803d">Solicitudes de Presupuesto</h3>
+        <span class="badge bg-green">${solPend.length} pendiente${solPend.length!==1?'s':''} · ${solPres.length} total</span>
+      </div>
+      <div class="card-bd" style="padding:0"><div class="tw"><table>
+        <thead><tr><th>Área</th><th>Año</th><th>Monto solicitado</th><th>Justificación</th><th>Solicitado por</th><th>Fecha</th><th>Estado</th><th style="min-width:220px">Acción</th></tr></thead>
+        <tbody>${solPres.map(s=>{
+          const isPend=s.estado==='Pendiente';
+          return`<tr>
+            <td><span class="adot" style="background:${aCol(s.area)}"></span><strong>${s.area}</strong></td>
+            <td><span class="badge bg-blue">${s.anio}</span></td>
+            <td><strong>${$c(s.montoSolicitado)}</strong></td>
+            <td style="font-size:12px;max-width:200px;white-space:normal">${s.justificacion}</td>
+            <td style="font-size:12px">${s.solicitadoPor}</td>
+            <td style="font-size:12px;white-space:nowrap">${$ts(s.fecha)}</td>
+            <td><span class="badge ${s.estado==='Aprobado'?'bg-green':s.estado==='Rechazado'?'bg-red':'bg-yellow'}">${s.estado}</span></td>
+            <td>${isPend?`
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <input id="solObs_${s.id}" type="text" placeholder="Observación (opcional)" style="padding:4px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;width:100%;background:var(--card);color:var(--text);outline:none">
+                <div style="display:flex;gap:6px">
+                  <button onclick="resolveSolPres('${s.id}','aprobar')" style="flex:1;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:#dcfce7;color:#15803d;border:1px solid #86efac">✓ Aprobar</button>
+                  <button onclick="resolveSolPres('${s.id}','rechazar')" style="flex:1;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5">✕ Rechazar</button>
+                </div>
+              </div>`
+              :`<span style="font-size:12px;color:var(--muted)">${s.observaciones||'—'}<br><span style="font-size:11px">por ${s.resueltoPor}</span></span>`}
+            </td>
+          </tr>`;}).join('')}
+        </tbody>
+      </table></div></div>
+    </div>`:
+    // Lider ve sus propias solicitudes enviadas
+    isLider&&solPres.filter(s=>s.solicitadoPor===CU.name).length>0?`
+    <div class="card" style="margin-bottom:18px;border-color:#bbf7d0">
+      <div class="card-hd" style="background:#f0fdf4">
+        <h3 style="color:#15803d">Mis solicitudes enviadas</h3>
+        <span class="badge bg-green">${solPres.filter(s=>s.solicitadoPor===CU.name&&s.estado==='Pendiente').length} pendiente${solPres.filter(s=>s.solicitadoPor===CU.name&&s.estado==='Pendiente').length!==1?'s':''}</span>
+      </div>
+      <div class="card-bd" style="padding:0"><div class="tw"><table>
+        <thead><tr><th>Año</th><th>Monto solicitado</th><th>Justificación</th><th>Fecha</th><th>Estado</th><th>Obs. admin</th><th></th></tr></thead>
+        <tbody>${solPres.filter(s=>s.solicitadoPor===CU.name).map(s=>`<tr>
+          <td><span class="badge bg-blue">${s.anio}</span></td>
+          <td><strong>${$c(s.montoSolicitado)}</strong></td>
+          <td style="font-size:12px;max-width:180px;white-space:normal">${s.justificacion}</td>
+          <td style="font-size:12px;white-space:nowrap">${$ts(s.fecha)}</td>
+          <td><span class="badge ${s.estado==='Aprobado'?'bg-green':s.estado==='Rechazado'?'bg-red':'bg-yellow'}">${s.estado}</span></td>
+          <td style="font-size:12px;color:var(--muted)">${s.observaciones||'—'}</td>
+          <td>${s.estado==='Pendiente'?`<button onclick="cancelSolPres('${s.id}')" class="btn-icon" style="color:var(--danger);border-color:var(--danger-b)" title="Cancelar solicitud"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'—'}</td>
+        </tr>`).join('')}
+        </tbody>
+      </table></div></div>
+    </div>`:'';
+
+  // ── Tabla presupuestos ────────────────────────────
+  const presTable=`
+    <div class="card">
+      <div class="card-hd">
+        <h3>Presupuestos Cargados <span class="badge bg-gray" style="margin-left:6px">${PRES_VIEW.length}</span></h3>
+        ${canEdit?`<button class="btn btn-primary btn-sm" onclick="openPModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nuevo</button>`:''}
+      </div>
+      <div class="card-bd" style="padding:0">
+        ${PRES_VIEW.length===0?`<div class="empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><p>No hay presupuestos cargados${isLider?' para tu área.':'.'}</p></div>`:`
+        <div class="tw"><table>
+          <thead><tr><th>Área</th><th>Año</th><th>Monto Anual</th><th>Tipo</th><th>Estado</th><th>Distribución</th>${canEdit?'<th></th>':''}</tr></thead>
+          <tbody>${PRES_VIEW.map(p=>`<tr>
+            <td><span class="adot" style="background:${aCol(p.area)}"></span>${p.area}</td>
+            <td><span class="badge bg-blue">${p.anio}</span></td>
+            <td><strong>${$c(p.monto)}</strong></td>
+            <td><span class="badge bg-purple">${p.tipo||'—'}</span></td>
+            <td><span class="badge ${p.estado==='Activo'?'bg-green':p.estado==='Borrador'?'bg-gray':p.estado==='Cerrado'?'bg-red':'bg-orange'}">${p.estado||'—'}</span></td>
+            <td style="font-size:12px;color:var(--muted);text-transform:capitalize">${p.distribucion||'uniforme'}</td>
+            ${canEdit?`<td style="white-space:nowrap">
+              <button class="btn-icon" onclick="openPModal('${p.id}')" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></button>
+              <button class="btn-icon" onclick="delPres('${p.id}')" style="color:var(--danger);border-color:var(--danger-b)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+            </td>`:''}
+          </tr>`).join('')}</tbody>
+        </table></div>
+        <div class="tfoot-row"><span>${PRES_VIEW.length} ítem${PRES_VIEW.length!==1?'s':''}</span><strong>${$c(total)}</strong></div>`}
+      </div>
+    </div>`;
+
+  // ── Sección solicitar presupuesto (solo Lider) ────
+  const solicitarHTML=isLider?`
+    <div class="card" style="margin-top:18px;border-style:dashed;border-color:var(--primary,#7c3aed)">
+      <div class="card-hd" style="background:var(--primary-light,#ede9fe)">
+        <h3 style="color:var(--primary,#7c3aed)">Solicitar un presupuesto al administrador</h3>
+        <button class="btn btn-primary" onclick="openSolPresModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Nueva solicitud
+        </button>
+      </div>
+      <div class="card-bd" style="color:var(--muted);font-size:13px;line-height:1.6">
+        ¿Necesitás un presupuesto adicional o no tenés uno asignado para el año? Completá una solicitud y el administrador la recibirá automáticamente para revisarla y aprobarla.
+        El resultado te llegará por notificación y aparecerá en la sección de arriba.
+      </div>
+    </div>`:'';
+
+  $('pContent').innerHTML=`${banner}${solAdminHTML}${presTable}${solicitarHTML}`;
 }
 
 function autoSumMeses(){
@@ -1357,16 +1655,25 @@ function saveNotifsSeen(arr){localStorage.setItem('b_notifs_seen',JSON.stringify
 
 function getNotifs(){
   var ajustes=JSON.parse(localStorage.getItem('b_ajustes')||'[]');
+  var solPres=getSolPres();
   var notifs=[];
   if(CU.role==='admin'){
-    // Admin ve solicitudes pendientes
+    // Admin ve solicitudes de ajuste pendientes
     ajustes.filter(function(a){return !a.resuelto;}).forEach(function(a){
       notifs.push({id:'pend_'+a.id,type:'pending',icon:'🔔',bg:'#fdf4ff',egr:a.egr,motivo:a.motivo,by:a.by,area:a.area,fecha:a.fecha});
     });
+    // Admin ve solicitudes de presupuesto pendientes
+    solPres.filter(function(s){return s.estado==='Pendiente';}).forEach(function(s){
+      notifs.push({id:'solpres_'+s.id,type:'sol_pres_in',icon:'📋',bg:'#eff6ff',area:s.area,monto:s.monto,solicitadoPor:s.solicitadoPor,fecha:s.fecha});
+    });
   } else {
-    // Responsable ve sus solicitudes resueltas
+    // Responsable ve sus solicitudes de ajuste resueltas
     ajustes.filter(function(a){return a.resuelto&&a.by===CU.name&&a.accion;}).forEach(function(a){
       notifs.push({id:'res_'+a.id,type:'resolved',icon:a.accion==='rechazar'?'❌':'✅',bg:a.accion==='rechazar'?'#fef2f2':'#f0fdf4',egr:a.egr,accion:a.accion,observaciones:a.observaciones,resueltoPor:a.resueltoPor,fecha:a.fechaResolucion});
+    });
+    // Responsable ve respuesta a sus solicitudes de presupuesto
+    solPres.filter(function(s){return s.solicitadoPor===CU.name&&s.estado!=='Pendiente';}).forEach(function(s){
+      notifs.push({id:'solpres_res_'+s.id,type:'sol_pres_out',icon:s.estado==='Aprobada'?'✅':'❌',bg:s.estado==='Aprobada'?'#f0fdf4':'#fef2f2',area:s.area,monto:s.monto,estado:s.estado,fecha:s.fechaResolucion||s.fecha});
     });
   }
   // Más recientes primero
@@ -1406,6 +1713,33 @@ function toggleNotifPanel(){
           +'<div class="notif-sub"><strong>'+n.by+'</strong>'+(n.area?' · '+n.area:'')+'<br>'+n.egr+' — <em>'+n.motivo+'</em></div>'
           +'<div class="notif-sub" style="margin-top:3px">'+$ts(n.fecha)+'</div>'
           +'</div></div>';
+      } else if(n.type==='sol_pres_in'){
+        html+='<div class="notif-item" onclick="navTo(\'presupuestos\');document.getElementById(\'notifPanel\').remove()" style="cursor:pointer">'
+          +'<div class="notif-icon" style="background:#eff6ff">📋</div>'
+          +'<div class="notif-body">'
+          +'<div class="notif-title">Nueva solicitud de presupuesto</div>'
+          +'<div class="notif-sub"><strong>'+(n.solicitadoPor||'')+'</strong>'+(n.area?' · '+n.area:'')+(n.monto?' — $'+Number(n.monto).toLocaleString('es-AR'):'')+'</div>'
+          +'<div class="notif-sub" style="margin-top:3px">'+$ts(n.fecha)+'</div>'
+          +'</div></div>';
+      } else if(n.type==='sol_pres_out'){
+        var labelSP=n.estado==='Aprobada'?'Presupuesto aprobado':'Presupuesto rechazado';
+        html+='<div class="notif-item" onclick="navTo(\'presupuestos\');document.getElementById(\'notifPanel\').remove()" style="cursor:pointer">'
+          +'<div class="notif-icon" style="background:'+n.bg+'">'+n.icon+'</div>'
+          +'<div class="notif-body">'
+          +'<div class="notif-title">'+labelSP+'</div>'
+          +'<div class="notif-sub">'+(n.area||'')+(n.monto?' — $'+Number(n.monto).toLocaleString('es-AR'):'')+'</div>'
+          +'<div class="notif-sub" style="margin-top:3px">'+$ts(n.fecha)+'</div>'
+          +'</div></div>';
+      } else if(n.type==='resolved'){
+        var label=n.accion==='rechazar'?'Solicitud rechazada':'Solicitud aceptada';
+        html+='<div class="notif-item" onclick="navTo(\'gastos\');document.getElementById(\'notifPanel\').remove()" style="cursor:pointer">'
+          +'<div class="notif-icon" style="background:'+n.bg+'">'+n.icon+'</div>'
+          +'<div class="notif-body">'
+          +'<div class="notif-title">'+label+'</div>'
+          +'<div class="notif-sub">'+n.egr+(n.resueltoPor?' · por '+n.resueltoPor:'')+'</div>'
+          +(n.observaciones?'<div class="notif-sub" style="margin-top:3px;font-style:italic">'+n.observaciones.slice(0,80)+'</div>':'')
+          +'<div class="notif-sub" style="margin-top:3px">'+$ts(n.fecha)+'</div>'
+          +'</div></div>';
       } else {
         var label=n.accion==='rechazar'?'Solicitud rechazada':'Solicitud aceptada';
         html+='<div class="notif-item" onclick="navTo(\'gastos\');document.getElementById(\'notifPanel\').remove()" style="cursor:pointer">'
@@ -1432,43 +1766,18 @@ function toggleNotifPanel(){
 }
 
 function renderGastos(){
-  // Líderes solo ven su área; gerencia y admin ven todo
-  const areaFija=CU.role==='responsable'?CU.area:null;
-  _pvState={f:null,fa:areaFija,sc:null,sd:-1};
-  // Limpiar iContent para evitar IDs duplicados (pvTbody/pvFoot)
   var ic=$('iContent');if(ic)ic.innerHTML='';
+  if(CU.role==='responsable') _renderGastosLider();
+  else if(CU.role==='gerencia') _renderGastosDirector();
+  else _renderGastosAdmin();
+}
+
+function _renderGastosAdmin(){
+  _pvState={f:null,fa:null,sc:null,sd:-1};
   var misSol=JSON.parse(localStorage.getItem('b_ajustes')||'[]').filter(function(a){return a.by===CU.name;});
   var nPend=misSol.filter(function(a){return !a.resuelto;}).length;
   $('gContent').innerHTML=`
-    <div class="alert alert-info" style="margin-bottom:18px">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Revisá los comprobantes a continuación. Si encontrás un dato incorrecto (categoría, monto, período u otro), hacé clic en <strong>Solicitar revisión</strong>. El área administrativa quedará notificada en el sistema.
-    </div>
-    ${misSol.length>0?`
-    <div class="card" style="margin-bottom:18px;border-color:#e9d5ff">
-      <div class="card-hd" style="background:#fdf4ff">
-        <h3 style="color:#7e22ce">Mis solicitudes de revisión</h3>
-        <span class="badge bg-review">${nPend} pendiente${nPend!==1?'s':''} · ${misSol.length} total</span>
-      </div>
-      <div class="card-bd" style="padding:0">
-        <div class="tw"><table>
-          <thead><tr><th>Comprobante</th><th>Motivo</th><th>Enviado a</th><th>Fecha</th><th>Estado</th></tr></thead>
-          <tbody>${misSol.map(function(a){return '<tr>'
-            +'<td style="font-family:monospace;font-size:11px">'+a.egr+'</td>'
-            +'<td><span class="badge bg-yellow">'+a.motivo+'</span></td>'
-            +'<td style="font-size:12px">'+a.destinatario+'</td>'
-            +'<td style="font-size:12px;white-space:nowrap">'+$ts(a.fecha)+'</td>'
-            +'<td>'+(a.resuelto
-              ?(a.accion==='rechazar'
-                ?'<span class="badge" style="background:#dc2626;color:#fff">❌ Rechazado</span>'
-                :'<span class="badge bg-green">✅ Aceptado</span>')
-              +'<br>'+(a.observaciones?'<span style="font-size:11px;color:var(--muted);display:block;margin-top:3px;max-width:200px;white-space:normal"><strong>Obs.:</strong> '+a.observaciones+'</span>':'')
-              :'<span class="badge bg-yellow">Pendiente</span>')+'</td>'
-            +'</tr>';}).join('')}
-          </tbody>
-        </table></div>
-      </div>
-    </div>` : ''}
+    ${sectionBanner('🔍','Revisión de Gastos — Admin','Todos los comprobantes importados desde Capital Humano y Marketing. Podés filtrar por categoría y revisar el estado de las solicitudes de ajuste enviadas por los líderes de área.')}
     <div class="card">
       <div class="card-hd" style="flex-wrap:wrap;gap:10px">
         <h3>Comprobantes importados</h3>
@@ -1484,26 +1793,208 @@ function renderGastos(){
         </div>
       </div>
       <div class="card-bd" style="padding:0">
-        <div class="tw">
-          <table>
-            <thead><tr>
-              <th>#</th>
-              <th class="th-sort" id="pvTh-egr" onclick="pvSort('egr')">Comprobante <span class="sort-arrow" id="pvS-egr">⇅</span></th>
-              <th class="th-sort" id="pvTh-fecha" onclick="pvSort('fecha')">Fecha <span class="sort-arrow" id="pvS-fecha">⇅</span></th>
-              <th class="th-sort" id="pvTh-desc" onclick="pvSort('desc')">Descripción <span class="sort-arrow" id="pvS-desc">⇅</span></th>
-              <th class="th-sort" id="pvTh-per" onclick="pvSort('per')">Período <span class="sort-arrow" id="pvS-per">⇅</span></th>
-              <th class="th-sort" id="pvTh-cat" onclick="pvSort('cat')">Categoría <span class="sort-arrow" id="pvS-cat">⇅</span></th>
-              <th class="th-sort" id="pvTh-monto" onclick="pvSort('monto')">Monto <span class="sort-arrow" id="pvS-monto">⇅</span></th>
-              <th>Hoja</th>
-              <th>Revisión</th>
-            </tr></thead>
-            <tbody id="pvTbody"></tbody>
-          </table>
-        </div>
+        <div class="tw"><table>
+          <thead><tr>
+            <th>#</th>
+            <th class="th-sort" id="pvTh-egr" onclick="pvSort('egr')">Comprobante <span class="sort-arrow" id="pvS-egr">⇅</span></th>
+            <th class="th-sort" id="pvTh-fecha" onclick="pvSort('fecha')">Fecha <span class="sort-arrow" id="pvS-fecha">⇅</span></th>
+            <th class="th-sort" id="pvTh-desc" onclick="pvSort('desc')">Descripción <span class="sort-arrow" id="pvS-desc">⇅</span></th>
+            <th class="th-sort" id="pvTh-per" onclick="pvSort('per')">Período <span class="sort-arrow" id="pvS-per">⇅</span></th>
+            <th class="th-sort" id="pvTh-cat" onclick="pvSort('cat')">Categoría <span class="sort-arrow" id="pvS-cat">⇅</span></th>
+            <th class="th-sort" id="pvTh-monto" onclick="pvSort('monto')">Monto <span class="sort-arrow" id="pvS-monto">⇅</span></th>
+            <th>Hoja</th><th>Revisión</th>
+          </tr></thead>
+          <tbody id="pvTbody"></tbody>
+        </table></div>
         <div class="tfoot-row" id="pvFoot"></div>
       </div>
     </div>`;
   pvRender();
+}
+
+function _renderGastosLider(){
+  _pvState={f:null,fa:CU.area,sc:null,sd:-1};
+  var myData=GDATA.filter(function(g){return g.per&&(g.area||'RRHH')===CU.area;});
+  var years=[...new Set(myData.map(function(g){return '20'+g.per.slice(4);}))].sort().reverse();
+  var filtData=GASTOS_YEAR_SEL?myData.filter(function(g){return '20'+g.per.slice(4)===GASTOS_YEAR_SEL;}):myData;
+  var _ajustesPv=JSON.parse(localStorage.getItem('b_ajustes')||'[]');
+  var misSol=_ajustesPv.filter(function(a){return a.by===CU.name;});
+  var nPend=misSol.filter(function(a){return !a.resuelto;}).length;
+
+  // Group by period
+  var byPer={};
+  filtData.forEach(function(g){if(!byPer[g.per])byPer[g.per]=[];byPer[g.per].push(g);});
+  var pers=Object.keys(byPer).sort(function(a,b){
+    var ma=a.split('/')[0],ya=a.split('/')[1],mb=b.split('/')[0],yb=b.split('/')[1];
+    var idx=function(k){return MESES.findIndex(function(m){return m.k===k;});};
+    return ya!==yb?yb.localeCompare(ya):idx(mb)-idx(ma);
+  });
+
+  var yearBtns=`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:18px">
+    <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Año:</span>
+    ${years.map(function(y){return`<button onclick="gastosToggleYear('${y}')" style="${GASTOS_YEAR_SEL===y?'background:var(--primary);color:#fff;border-color:var(--primary)':'background:var(--card);color:var(--muted);border-color:var(--border)'};padding:5px 18px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;border-style:solid;border-width:1.5px;transition:all .15s">${y}</button>`;}).join('')}
+    ${GASTOS_YEAR_SEL?`<button onclick="gastosToggleYear('')" style="background:var(--card);color:var(--muted);border:1.5px solid var(--border);padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer">Todos</button>`:''}
+  </div>`;
+
+  var accordion=pers.length===0
+    ?`<div class="empty"><p>Sin registros para el período seleccionado.</p></div>`
+    :pers.map(function(per){
+      var rows=byPer[per];
+      var tot=rows.reduce(function(s,g){return s+g.monto;},0);
+      var isOpen=!!GASTOS_MES_OPEN[per];
+      var mKey=per.split('/')[0],yKey=per.split('/')[1];
+      var mesLabel=(MESES.find(function(m){return m.k===mKey;})||{l:mKey}).l;
+      var tableRows=rows.map(function(g){
+        var yaSol=_ajustesPv.some(function(a){return a.egr===g.egr&&!a.resuelto;});
+        var adjBtn=yaSol
+          ?'<button disabled style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:var(--success-bg);color:#16a34a;border:1px solid var(--success-b);cursor:default">✓ Solicitado</button>'
+          :'<button onclick="solicitarAjuste(this)" data-egr="'+g.egr+'" data-desc="'+g.desc.replace(/"/g,'&quot;')+'" data-monto="'+g.monto+'" data-per="'+g.per+'" style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa">Solicitar</button>';
+        return '<tr style="border-top:.5px solid var(--border)">'
+          +'<td style="padding:8px 12px;font-family:monospace;font-size:10px;color:var(--muted)">'+g.egr+'</td>'
+          +'<td style="padding:8px 12px;font-size:12px;max-width:200px">'+g.desc+'</td>'
+          +'<td style="padding:8px 12px"><span class="badge bg-purple">'+(g.cat||'—')+'</span></td>'
+          +'<td style="padding:8px 12px;text-align:right;font-weight:700">'+$c2(g.monto)+'</td>'
+          +'<td style="padding:8px 12px;text-align:center">'+adjBtn+'</td>'
+          +'</tr>';
+      }).join('');
+      return`<div style="border:.5px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden">
+        <button onclick="gastosToggleMes('${per}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:${isOpen?'var(--primary-light,#ede9fe)':'var(--card)'};border:none;cursor:pointer;gap:12px;text-align:left">
+          <div style="display:flex;align-items:center;gap:12px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${isOpen?'var(--primary)':'var(--muted)'}" stroke-width="2.5" style="flex-shrink:0;transition:transform .2s;transform:rotate(${isOpen?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+            <span style="font-size:14px;font-weight:700;color:${isOpen?'var(--primary)':'var(--text)'}">${mesLabel} 20${yKey}</span>
+            <span class="badge bg-blue">${rows.length} registro${rows.length!==1?'s':''}</span>
+          </div>
+          <span style="font-size:13px;font-weight:700;color:var(--text)">${$c(tot)}</span>
+        </button>
+        ${isOpen?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--bg)">
+            <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;font-weight:600">Comprobante</th>
+            <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;font-weight:600">Descripción</th>
+            <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;font-weight:600">Categoría</th>
+            <th style="padding:8px 12px;text-align:right;color:var(--muted);font-size:11px;font-weight:600">Monto</th>
+            <th style="padding:8px 12px;text-align:center;color:var(--muted);font-size:11px;font-weight:600">Revisión</th>
+          </tr></thead>
+          <tbody>${tableRows}</tbody>
+          <tfoot><tr style="background:var(--bg)">
+            <td colspan="3" style="padding:8px 12px;font-size:12px;color:var(--muted)">${rows.length} registros</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:800">${$c(tot)}</td>
+            <td></td>
+          </tr></tfoot>
+        </table></div>`:''}
+      </div>`;
+    }).join('');
+
+  $('gContent').innerHTML=`
+    ${sectionBanner('🔍','Mis Gastos — '+CU.area,'Comprobantes importados de tu área, organizados por mes. Expandí cada período para ver el detalle y solicitar correcciones si encontrás algún dato incorrecto.')}
+    ${misSol.length>0?`<div class="card" style="margin-bottom:18px;border-color:#e9d5ff">
+      <div class="card-hd" style="background:#fdf4ff">
+        <h3 style="color:#7e22ce">Mis solicitudes de revisión</h3>
+        <span class="badge bg-review">${nPend} pendiente${nPend!==1?'s':''} · ${misSol.length} total</span>
+      </div>
+      <div class="card-bd" style="padding:0"><div class="tw"><table>
+        <thead><tr><th>Comprobante</th><th>Motivo</th><th>Enviado a</th><th>Fecha</th><th>Estado</th></tr></thead>
+        <tbody>${misSol.map(function(a){return '<tr>'
+          +'<td style="font-family:monospace;font-size:11px">'+a.egr+'</td>'
+          +'<td><span class="badge bg-yellow">'+a.motivo+'</span></td>'
+          +'<td style="font-size:12px">'+a.destinatario+'</td>'
+          +'<td style="font-size:12px;white-space:nowrap">'+$ts(a.fecha)+'</td>'
+          +'<td>'+(a.resuelto?(a.accion==='rechazar'?'<span class="badge" style="background:#dc2626;color:#fff">❌ Rechazado</span>':'<span class="badge bg-green">✅ Aceptado</span>')+(a.observaciones?'<br><span style="font-size:11px;color:var(--muted);display:block;margin-top:3px;max-width:200px;white-space:normal"><strong>Obs.:</strong> '+a.observaciones+'</span>':''):'<span class="badge bg-yellow">Pendiente</span>')+'</td>'
+          +'</tr>';}).join('')}</tbody>
+      </table></div></div>
+    </div>`:''}
+    <div class="card">
+      <div class="card-hd"><h3>Gastos por período</h3>
+        <span class="badge bg-gray">${filtData.length} registros · ${$c(filtData.reduce(function(s,g){return s+g.monto;},0))}</span>
+      </div>
+      <div class="card-bd">
+        ${yearBtns}
+        ${accordion}
+      </div>
+    </div>`;
+}
+
+function _renderGastosDirector(){
+  var years=[...new Set(GDATA.map(function(g){return g.per?'20'+g.per.slice(4):null;}).filter(Boolean))].sort().reverse();
+  var areas=[...new Set(GDATA.map(function(g){return g.area||'RRHH';}))].sort();
+  var cats=CATEGORIAS.filter(function(c){return GDATA.some(function(g){return g.cat===c;});});
+  var hasFilter=GASTOS_DIR_YEAR||GASTOS_DIR_MES||GASTOS_DIR_AREA||GASTOS_DIR_CAT;
+
+  var filtered=GDATA.filter(function(g){
+    if(!g.per)return false;
+    if(GASTOS_DIR_YEAR&&'20'+g.per.slice(4)!==GASTOS_DIR_YEAR)return false;
+    if(GASTOS_DIR_MES&&!g.per.startsWith(GASTOS_DIR_MES+'/'))return false;
+    if(GASTOS_DIR_AREA&&(g.area||'RRHH')!==GASTOS_DIR_AREA)return false;
+    if(GASTOS_DIR_CAT&&g.cat!==GASTOS_DIR_CAT)return false;
+    return true;
+  });
+
+  var selStyle='padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;color:var(--text);background:var(--card);cursor:pointer;outline:none';
+  var filterBar=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:20px;padding:14px 16px;background:var(--bg);border-radius:var(--r);border:.5px solid var(--border)">
+    <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-right:4px">Filtros:</span>
+    <select style="${selStyle}" onchange="setGastosDirFilter('y',this.value)">
+      <option value="">Todos los años</option>
+      ${years.map(function(y){return`<option value="${y}"${GASTOS_DIR_YEAR===y?' selected':''}>${y}</option>`;}).join('')}
+    </select>
+    <select style="${selStyle}" onchange="setGastosDirFilter('m',this.value)">
+      <option value="">Todos los meses</option>
+      ${MESES.map(function(m){return`<option value="${m.k}"${GASTOS_DIR_MES===m.k?' selected':''}>${m.l}</option>`;}).join('')}
+    </select>
+    <select style="${selStyle}" onchange="setGastosDirFilter('a',this.value)">
+      <option value="">Todas las áreas</option>
+      ${areas.map(function(a){return`<option value="${a}"${GASTOS_DIR_AREA===a?' selected':''}>${a}</option>`;}).join('')}
+    </select>
+    <select style="${selStyle}" onchange="setGastosDirFilter('c',this.value)">
+      <option value="">Todas las categorías</option>
+      ${cats.map(function(c){return`<option value="${c}"${GASTOS_DIR_CAT===c?' selected':''}>${c}</option>`;}).join('')}
+    </select>
+    ${hasFilter?`<button onclick="GASTOS_DIR_YEAR='';GASTOS_DIR_MES='';GASTOS_DIR_AREA='';GASTOS_DIR_CAT='';renderGastos()" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:var(--card);color:var(--muted);border:1.5px solid var(--border)">✕ Limpiar</button>`:''}
+  </div>`;
+
+  var tableHtml='';
+  if(!hasFilter){
+    tableHtml=`<div style="text-align:center;padding:48px 20px;color:var(--muted)">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="margin-bottom:12px;opacity:.4"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <div style="font-size:14px;font-weight:600;margin-bottom:6px">Aplicá al menos un filtro para ver los comprobantes</div>
+      <div style="font-size:12.5px">Seleccioná año, mes, área o categoría para cargar los registros.</div>
+    </div>`;
+  } else if(filtered.length===0){
+    tableHtml=`<div class="empty"><p>No hay comprobantes para los filtros seleccionados.</p></div>`;
+  } else {
+    var tot=filtered.reduce(function(s,g){return s+g.monto;},0);
+    tableHtml=`<div class="tw"><table>
+      <thead><tr>
+        <th>#</th><th>Comprobante</th><th>Fecha</th><th>Descripción</th>
+        <th>Período</th><th>Área</th><th>Categoría</th><th style="text-align:right">Monto</th>
+      </tr></thead>
+      <tbody>${filtered.map(function(g,i){return'<tr>'
+        +'<td style="color:var(--muted);font-size:12px">'+(i+1)+'</td>'
+        +'<td style="font-family:monospace;font-size:11px;color:var(--muted)">'+g.egr+'</td>'
+        +'<td style="white-space:nowrap">'+$d(g.fecha)+'</td>'
+        +'<td style="max-width:180px;font-size:12px">'+g.desc+'</td>'
+        +'<td><span class="badge bg-blue">'+g.per+'</span></td>'
+        +'<td><span class="adot" style="background:'+aCol(g.area||'RRHH')+'"></span>'+(g.area||'RRHH')+'</td>'
+        +'<td><span class="badge bg-purple">'+(g.cat||'—')+'</span></td>'
+        +'<td style="text-align:right;font-weight:700">'+$c2(g.monto)+'</td>'
+        +'</tr>';}).join('')}</tbody>
+      <tfoot><tr style="background:var(--bg)">
+        <td colspan="7" style="padding:9px 14px;font-size:12px;color:var(--muted)">${filtered.length} registros</td>
+        <td style="padding:9px 14px;text-align:right;font-weight:800">${$c(tot)}</td>
+      </tr></tfoot>
+    </table></div>`;
+  }
+
+  $('gContent').innerHTML=`
+    ${sectionBanner('🔍','Revisión de Gastos — Dirección','Vista ejecutiva de comprobantes. Aplicá filtros para analizar gastos por área, categoría, mes o año. Sin filtro activo no se muestra información para evitar sobrecargar la vista con datos sin contexto.')}
+    <div class="card">
+      <div class="card-hd">
+        <h3>Comprobantes</h3>
+        ${hasFilter?`<span class="badge bg-blue">${filtered.length} resultado${filtered.length!==1?'s':''}</span>`:'<span class="badge bg-gray">Esperando filtros</span>'}
+      </div>
+      <div class="card-bd" style="${!hasFilter?'':'padding:0'}">
+        ${filterBar}
+        ${tableHtml}
+      </div>
+    </div>`;
 }
 
 function renderImportar(){
@@ -1603,7 +2094,7 @@ function renderImportar(){
         </table></div>
       </div>
     </div>`);
-  $('iContent').innerHTML=revPanel+`
+  $('iContent').innerHTML=sectionBanner('📥','Importar Datos','Sincronizá los datos desde Google Sheets o importá archivos CSV. Revisá el estado de la última sincronización y los registros procesados.')+revPanel+`
     <div class="sync-card">
       <div class="sync-hd">
         <div class="sync-icon" style="background:${si.bg}"><span>${si.ic}</span></div>
@@ -1685,48 +2176,72 @@ function renderImportar(){
 
 // ── CONTROL PRESUPUESTARIO ────────────────────────
 function renderControl(){
-  const totP=PRES.reduce((s,p)=>s+p.monto,0);
-  const totG=GDATA.reduce((s,g)=>s+g.monto,0);
+  const avAreasC=[...new Set(GDATA.map(g=>g.area||'RRHH'))];
+  const areaFilterHTML=CU.role!=='responsable'?`<div class="card" style="margin-bottom:18px">
+    <div class="card-hd"><h3>Filtrar por Área</h3></div>
+    <div class="card-bd">${_areaBtns(CTRL_AREAS_SEL,'ctrlToggleArea',avAreasC)}</div>
+  </div>`:'';
 
-  // Build period comparison: group gastos by "mes/año" key, compare to presupuesto mensual
-  // per format: "ene/25" → mes="ene", anio=2025
-  const perMap={};
-  GDATA.forEach(g=>{
+  // Datos filtrados por área
+  const gdataC=CTRL_AREAS_SEL.length?GDATA.filter(g=>CTRL_AREAS_SEL.includes(g.area||'RRHH')):GDATA;
+  const presC=CTRL_AREAS_SEL.length?PRES.filter(p=>CTRL_AREAS_SEL.includes(p.area)):PRES;
+
+  const totP=presC.reduce((s,p)=>s+p.monto,0);
+  const totG=gdataC.reduce((s,g)=>s+g.monto,0);
+
+  // Build perMapAll (todos los períodos)
+  const perMapAll={};
+  gdataC.forEach(g=>{
     const parts=g.per?g.per.split('/'):[null,null];
-    const mesK=parts[0]||'';
-    const yrShort=parts[1]||'';
+    const mesK=parts[0]||'';const yrShort=parts[1]||'';
     const anio=yrShort?2000+parseInt(yrShort):null;
     if(!mesK||!anio)return;
-    const key=g.per;
-    if(!perMap[key])perMap[key]={mesK,anio,ga:0};
-    perMap[key].ga+=g.monto;
+    if(!perMapAll[g.per])perMapAll[g.per]={mesK,anio,ga:0};
+    perMapAll[g.per].ga+=g.monto;
   });
-  // For each period key, find matching presupuesto monthly allocation
-  Object.entries(perMap).forEach(([key,d])=>{
-    const matchPres=PRES.filter(p=>p.anio===d.anio&&p.mensual&&p.mensual[d.mesK]);
-    d.pr=matchPres.reduce((s,p)=>s+(p.mensual[d.mesK]||0),0);
+  Object.entries(perMapAll).forEach(([key,d])=>{
+    const mp=presC.filter(p=>p.anio===d.anio&&p.mensual&&p.mensual[d.mesK]);
+    d.pr=mp.reduce((s,p)=>s+(p.mensual[d.mesK]||0),0);
   });
 
-  const byCat={};
-  CATEGORIAS.forEach(c=>{
-    const ga=GDATA.filter(g=>g.cat===c).reduce((s,x)=>s+x.monto,0);
-    if(ga>0)byCat[c]=ga;
-  });
+  // Filtrar perMap por año seleccionado
+  const perMap=CTRL_YEAR_SEL
+    ?Object.fromEntries(Object.entries(perMapAll).filter(([,d])=>d.anio===+CTRL_YEAR_SEL))
+    :perMapAll;
 
-  // Annual comparison by year
+  // Años disponibles para botones
+  const ctrlYears=[...new Set(Object.values(perMapAll).map(d=>d.anio))].sort();
+  const yearBtnsHTML=ctrlYears.length>1?`<div style="display:flex;gap:6px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+    <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-right:4px">Año:</span>
+    <button onclick="ctrlToggleYear('')" style="${!CTRL_YEAR_SEL?'background:var(--primary);color:#fff;border-color:var(--primary)':'background:var(--card);color:var(--muted);border-color:var(--border)'};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border-style:solid;border-width:1.5px;transition:all .15s">Todos</button>
+    ${ctrlYears.map(y=>`<button onclick="ctrlToggleYear('${y}')" style="${CTRL_YEAR_SEL===String(y)?'background:var(--primary);color:#fff;border-color:var(--primary)':'background:var(--card);color:var(--muted);border-color:var(--border)'};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border-style:solid;border-width:1.5px;transition:all .15s">${y}</button>`).join('')}
+  </div>`:'';
+
+  // Comparativo anual
   const byAnio={};
-  PRES.forEach(p=>{
-    if(!byAnio[p.anio])byAnio[p.anio]={pr:0,ga:0};
-    byAnio[p.anio].pr+=p.monto;
-  });
-  GDATA.forEach(g=>{
-    const parts=g.per?g.per.split('/'):[null,null];
-    const yrShort=parts[1]||'';
+  presC.forEach(p=>{if(!byAnio[p.anio])byAnio[p.anio]={pr:0,ga:0};byAnio[p.anio].pr+=p.monto;});
+  gdataC.forEach(g=>{
+    const yrShort=(g.per||'').split('/')[1]||'';
     const anio=yrShort?2000+parseInt(yrShort):null;
     if(anio&&byAnio[anio])byAnio[anio].ga+=g.monto;
   });
 
+  // Gastos por categoría diferenciados por año
+  const catYears=[...new Set(gdataC.map(g=>g.per?'20'+g.per.slice(4):null).filter(Boolean))].sort();
+  const byCatYear={};
+  catYears.forEach(yr=>{
+    byCatYear[yr]={};
+    CATEGORIAS.forEach(c=>{
+      const ga=gdataC.filter(g=>g.cat===c&&g.per&&'20'+g.per.slice(4)===yr).reduce((s,x)=>s+x.monto,0);
+      if(ga>0)byCatYear[yr][c]=ga;
+    });
+  });
+
   $('cContent').innerHTML=`
+    ${CU.role==='gerencia'
+      ?sectionBanner('🎯','Control Presupuestario — Dirección','Vista ejecutiva de la ejecución vs. presupuesto. Filtrá por área para ver el detalle de cualquier centro de costo. Los heatmaps y semáforos te permiten detectar desvíos de un vistazo, sin necesidad de revisar tabla por tabla.')
+      :sectionBanner('🎯','Control Presupuestario','Seguimiento de la ejecución presupuestaria. Compará lo <strong>presupuestado vs. lo gastado real</strong> por área y período. Incluye semáforos de alerta, evolución mensual y desglose por categoría de gasto. Filtrá por área para ver el análisis de cada centro de costo.')}
+    ${areaFilterHTML}
     <div class="card" style="margin-bottom:18px">
       <div class="card-hd"><h3>Resumen Global</h3></div>
       <div class="card-bd">
@@ -1750,29 +2265,155 @@ function renderControl(){
     </div>
     <div class="card" style="margin-bottom:18px">
       <div class="card-hd"><h3>Comparativo Mensual</h3><span class="badge bg-gray" style="font-size:11px">Presupuesto mensual vs. gasto real</span></div>
-      <div class="card-bd" style="padding:0">
-        ${Object.keys(perMap).length===0?`<div class="empty"><p>No hay datos de gastos cargados.</p></div>`:`
+      <div class="card-bd" style="padding-bottom:0">
+        ${yearBtnsHTML}
+      </div>
+      <div class="card-bd" style="padding-top:0">
+        ${Object.keys(perMap).length===0?`<div class="empty"><p>No hay datos de gastos para el período seleccionado.</p></div>`:`
         <div class="tw"><table>
           <thead><tr><th>Período</th><th>Presup. Mensual</th><th>Ejecutado</th><th>Diferencia</th><th>% Ejec.</th><th>Estado</th></tr></thead>
-          <tbody>${Object.entries(perMap).map(([per,d])=>{
-            const diff=d.pr-d.ga,pp=pct(d.ga,d.pr||1);
-            const noP=d.pr===0;
+          <tbody>${Object.entries(perMap).sort((a,b)=>{
+            const [ma,ya]=a[0].split('/');const [mb,yb]=b[0].split('/');
+            const idx=k=>MESES.findIndex(m=>m.k===k);
+            return ya!==yb?ya.localeCompare(yb):idx(ma)-idx(mb);
+          }).map(([per,d])=>{
+            const diff=d.pr-d.ga,pp=pct(d.ga,d.pr||1);const noP=d.pr===0;
             return`<tr><td><span class="badge bg-blue">${per}</span></td><td>${noP?'<span style="color:var(--muted);font-size:12px">Sin pres.</span>':$c(d.pr)}</td><td>${$c(d.ga)}</td><td style="color:${noP?'var(--muted)':diff>=0?'var(--success)':'var(--danger)'};font-weight:700">${noP?'—':((diff>=0?'+':'')+$c(diff))}</td><td><div style="display:flex;align-items:center;gap:6px"><div class="pbar" style="width:70px"><div class="fill" style="width:${clamp(pp,0,100)}%;background:${pp>100?'var(--danger)':pp>80?'var(--warning)':'var(--success)'}"></div></div><span style="font-size:12px">${noP?'—':pp+'%'}</span></div></td><td><span class="badge ${noP?'bg-gray':pp>100?'bg-red':pp>80?'bg-yellow':'bg-green'}">${noP?'Sin pres.':pp>100?'Excedido':pp>80?'En riesgo':'Normal'}</span></td></tr>`;
           }).join('')}</tbody>
         </table></div>`}
       </div>
     </div>
     <div class="card">
-      <div class="card-hd"><h3>Gastos por Categoría</h3></div>
+      <div class="card-hd"><h3>Gastos por Categoría</h3>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${catYears.map(y=>`<button onclick="ctrlToggleCatYear('${y}')" style="${CTRL_CAT_YEAR===y?'background:var(--primary);color:#fff;border-color:var(--primary)':'background:var(--card);color:var(--muted);border-color:var(--border)'};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border-style:solid;border-width:1.5px;transition:all .15s">${y}</button>`).join('')}
+          ${CTRL_CAT_YEAR?`<button onclick="ctrlToggleCatYear('')" style="background:var(--card);color:var(--muted);border:1.5px solid var(--border);padding:4px 10px;border-radius:20px;font-size:11px;cursor:pointer">Todos</button>`:''}
+        </div>
+      </div>
       <div class="card-bd" style="padding:0">
-        ${Object.keys(byCat).length===0?`<div class="empty"><p>No hay datos.</p></div>`:`
+        ${catYears.length===0?`<div class="empty"><p>No hay datos.</p></div>`:`
         <div class="tw"><table>
-          <thead><tr><th>Categoría</th><th>Cantidad</th><th>Monto</th><th>% del total</th></tr></thead>
-          <tbody>${Object.entries(byCat).map(([c,m])=>{const n=GDATA.filter(g=>g.cat===c).length;const pp=pct(m,totG||1);
-          return`<tr><td><span class="badge bg-purple">${c}</span></td><td>${n}</td><td><strong>${$c(m)}</strong></td><td><div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="flex:1"><div class="fill" style="width:${pp}%;background:var(--primary)"></div></div><span style="font-size:12px;width:35px;text-align:right">${pp}%</span></div></td></tr>`;}).join('')}</tbody>
+          <thead><tr><th>Año</th><th>Categoría</th><th>Cant.</th><th>Monto</th><th>% del año</th></tr></thead>
+          <tbody>${(CTRL_CAT_YEAR?catYears.filter(y=>y===CTRL_CAT_YEAR):catYears).flatMap(yr=>{
+            const entries=Object.entries(byCatYear[yr]||{}).sort((a,b)=>b[1]-a[1]);
+            const totYr=entries.reduce((s,[,v])=>s+v,0);
+            return entries.map(([c,m],i)=>{
+              const n=gdataC.filter(g=>g.cat===c&&g.per&&'20'+g.per.slice(4)===yr).length;
+              const pp=pct(m,totYr||1);
+              return`<tr>
+                ${i===0?`<td rowspan="${entries.length}" style="font-weight:700;vertical-align:top;padding-top:13px;white-space:nowrap"><span class="badge bg-blue">${yr}</span></td>`:''}
+                <td><span class="badge bg-purple">${c}</span></td>
+                <td style="text-align:center">${n}</td>
+                <td><strong>${$c(m)}</strong></td>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="width:72px"><div class="fill" style="width:${pp}%;background:var(--primary)"></div></div><span style="font-size:12px;width:35px;text-align:right">${pp}%</span></div></td>
+              </tr>`;
+            });
+          }).join('')}</tbody>
         </table></div>`}
       </div>
-    </div>`;
+    </div>
+    ${(()=>{
+      // ── Heatmap área × mes ────────────────────────────────────────────
+      const hmYr=CTRL_CAT_YEAR||CTRL_YEAR_SEL||'2026';
+      const hmYrShort=hmYr.slice(2);
+      const cfPlanDisp=typeof CF_PLAN!=='undefined';
+      const hmRows=AREAS.map(a=>{
+        const presA=presC.filter(p=>p.area===a.name&&p.anio===+hmYr)[0];
+        const budM=presA?presA.monto/12:(cfPlanDisp?(CF_PLAN.find(p=>p.area===a.name)||{budget:0}).budget:0)/12;
+        const cells=MESES.map(m=>{
+          const per=m.k+'/'+hmYrShort;
+          const g=gdataC.filter(x=>x.per===per&&(x.area||'RRHH')===a.name).reduce((s,x)=>s+x.monto,0);
+          if(!g&&!budM)return`<td style="background:var(--bg);border-radius:4px;text-align:center;padding:5px;color:var(--muted);font-size:11px">—</td>`;
+          const pp=budM>0?pct(g,budM):0;
+          const bg=!g?'var(--bg)':pp>100?'#fee2e2':pp>80?'#fef3c7':'#dcfce7';
+          const tc=!g?'var(--muted)':pp>100?'#991b1b':pp>80?'#92400e':'#166534';
+          return`<td style="background:${bg};border-radius:4px;text-align:center;padding:5px;font-weight:600;color:${tc};font-size:11px">${!g?'—':pp+'%'}</td>`;
+        }).join('');
+        return`<tr><td style="padding:4px 8px;font-size:12px;color:var(--text);white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${a.color};margin-right:5px"></span>${a.name}</td>${cells}</tr>`;
+      }).join('');
+      const hmHTML=`<div class="card" style="margin-bottom:18px">
+        <div class="card-hd"><h3>Heatmap de Ejecución</h3><span class="badge bg-gray" style="font-size:11px">${hmYr} · % gastado vs. presupuesto mensual</span></div>
+        <div class="card-bd" style="overflow-x:auto">
+          <table style="width:100%;border-collapse:separate;border-spacing:3px;font-size:11px">
+            <thead><tr>
+              <th style="text-align:left;padding:3px 8px;color:var(--muted);min-width:150px"></th>
+              ${MESES.map(m=>`<th style="text-align:center;padding:3px;color:var(--muted);font-weight:600;min-width:36px">${m.l.slice(0,3)}</th>`).join('')}
+            </tr></thead>
+            <tbody>${hmRows}</tbody>
+          </table>
+          <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--muted)">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#dcfce7;border:.5px solid #86efac;margin-right:4px"></span>Normal &lt;80%</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fef3c7;border:.5px solid #fcd34d;margin-right:4px"></span>En riesgo 80–100%</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fee2e2;border:.5px solid #fca5a5;margin-right:4px"></span>Excedido &gt;100%</span>
+          </div>
+        </div>
+      </div>`;
+      // ── Top 8 gastos ──────────────────────────────────────────────────
+      const topG=[...gdataC].sort((a,b)=>b.monto-a.monto).slice(0,8);
+      const topHTML=topG.length===0?'':`<div class="card" style="margin-bottom:18px">
+        <div class="card-hd"><h3>Top Gastos del Período</h3><span class="badge bg-gray" style="font-size:11px">${topG.length} mayores comprobantes</span></div>
+        <div class="card-bd" style="padding:0"><div class="tw"><table>
+          <thead><tr><th style="text-align:center;width:32px">#</th><th>Concepto</th><th>Área</th><th>Categoría</th><th>Período</th><th style="text-align:right">Monto</th></tr></thead>
+          <tbody>${topG.map((g,i)=>`<tr>
+            <td style="color:var(--muted);text-align:center;font-weight:700">${i+1}</td>
+            <td><strong>${g.egr||'—'}</strong>${g.desc?`<div style="font-size:11px;color:var(--muted)">${String(g.desc).slice(0,60)}</div>`:''}</td>
+            <td><span class="adot" style="background:${aCol(g.area||'RRHH')}"></span>${g.area||'RRHH'}</td>
+            <td>${g.cat?`<span class="badge bg-purple">${g.cat}</span>`:'<span class="badge bg-gray">—</span>'}</td>
+            <td><span class="badge bg-blue">${g.per||'—'}</span></td>
+            <td style="text-align:right;font-weight:700">${$c(g.monto)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div></div>
+      </div>`;
+      // ── YoY comparación interanual ────────────────────────────────────
+      const yYrs=[...new Set(gdataC.map(g=>g.per?'20'+g.per.slice(4):null).filter(Boolean))].sort();
+      const yoyHTML=yYrs.length<2?'':`<div class="card" style="margin-bottom:18px">
+        <div class="card-hd"><h3>Comparación Interanual (YoY)</h3><span class="badge bg-gray" style="font-size:11px">Gasto real por área y año</span></div>
+        <div class="card-bd" style="padding:0"><div class="tw"><table>
+          <thead><tr><th>Área</th>${yYrs.map(y=>`<th style="text-align:right">${y}</th>`).join('')}<th style="text-align:right">Variación</th></tr></thead>
+          <tbody>${AREAS.filter(a=>yYrs.some(yr=>gdataC.some(g=>(g.area||'RRHH')===a.name&&g.per&&'20'+g.per.slice(4)===yr))).map(a=>{
+            const vals=yYrs.map(yr=>gdataC.filter(g=>(g.area||'RRHH')===a.name&&g.per&&'20'+g.per.slice(4)===yr).reduce((s,g)=>s+g.monto,0));
+            const v1=vals[0]||0,v2=vals[vals.length-1]||0;
+            const delta=v1>0?pct(v2-v1,v1):null;
+            const col=delta===null?'var(--muted)':delta>0?'var(--danger)':'var(--success)';
+            return`<tr>
+              <td><span class="adot" style="background:${aCol(a.name)}"></span><strong>${a.name}</strong></td>
+              ${vals.map(v=>`<td style="text-align:right">${v>0?$c(v):'<span style="color:var(--muted)">—</span>'}</td>`).join('')}
+              <td style="text-align:right;font-weight:700;color:${col}">${delta===null?'—':((delta>0?'+':'')+delta+'%')}</td>
+            </tr>`;
+          }).join('')}</tbody>
+          <tfoot><tr style="background:var(--bg)">
+            <td style="padding:9px 14px;font-weight:700">TOTAL</td>
+            ${yYrs.map(yr=>{const tot=gdataC.filter(g=>g.per&&'20'+g.per.slice(4)===yr).reduce((s,g)=>s+g.monto,0);return`<td style="padding:9px 14px;text-align:right;font-weight:800">${$c(tot)}</td>`;}).join('')}
+            <td style="padding:9px 14px"></td>
+          </tr></tfoot>
+        </table></div></div>
+      </div>`;
+      // ── Semáforo por categoría ────────────────────────────────────────
+      const catTotAll=gdataC.reduce((s,g)=>s+g.monto,0);
+      const catsConDatos=CATEGORIAS.filter(c=>gdataC.some(g=>g.cat===c));
+      const semHTML=`<div class="card" style="margin-bottom:18px">
+        <div class="card-hd"><h3>Semáforo por Categoría</h3>${CTRL_AREAS_SEL.length===1?`<span class="badge bg-blue" style="font-size:11px">${CTRL_AREAS_SEL[0]}</span>`:'<span class="badge bg-gray" style="font-size:11px">Todas las áreas</span>'}</div>
+        <div class="card-bd">
+          ${catsConDatos.length===0?'<div class="empty"><p>Sin datos de categorías.</p></div>':`
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px">
+            ${catsConDatos.map(c=>{
+              const gastado=gdataC.filter(g=>g.cat===c).reduce((s,g)=>s+g.monto,0);
+              const pp=pct(gastado,catTotAll||1);
+              const col=pp>40?'var(--danger)':pp>20?'var(--warning)':'var(--success)';
+              const ico=pp>40?'🔴':pp>20?'🟡':'🟢';
+              return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:.5px solid var(--border)">
+                <span style="font-size:14px">${ico}</span>
+                <span style="font-size:12px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c}</span>
+                <div class="pbar" style="width:60px;height:6px"><div class="fill" style="width:${pp}%;background:${col}"></div></div>
+                <span style="font-size:12px;font-weight:700;color:var(--muted);min-width:32px;text-align:right">${pp}%</span>
+                <span style="font-size:11px;color:var(--muted);min-width:85px;text-align:right">${$c(gastado)}</span>
+              </div>`;
+            }).join('')}
+          </div>`}
+        </div>
+      </div>`;
+      return hmHTML+topHTML+yoyHTML+semHTML;
+    })()}`;
 }
 
 // ── REPORTES ──────────────────────────────────────
@@ -1783,7 +2424,8 @@ function renderReportes(){
     const yy='20'+g.per.slice(4);
     if(REP_YEAR&&yy!==REP_YEAR)return false;
     if(REP_MES&&!g.per.startsWith(REP_MES))return false;
-    if(REP_AREA&&(g.area||'RRHH')!==REP_AREA)return false;
+    if(REP_AREAS_SEL.length&&!REP_AREAS_SEL.includes(g.area||'RRHH'))return false;
+    else if(!REP_AREAS_SEL.length&&REP_AREA&&(g.area||'RRHH')!==REP_AREA)return false;
     if(REP_CAT&&g.cat!==REP_CAT)return false;
     if(CU.role==='responsable'&&(g.area||'RRHH')!==CU.area)return false;
     return true;
@@ -1861,29 +2503,41 @@ function renderReportes(){
   const years=[...new Set(GDATA.map(g=>g.per?'20'+g.per.slice(4):null).filter(Boolean))].sort().reverse();
   const areasAvail=[...new Set(GDATA.map(g=>g.area||'RRHH'))];
   const catsAvail=[...new Set(GDATA.map(g=>g.cat).filter(Boolean))].sort();
-  const hayFiltros=REP_YEAR||REP_MES||REP_AREA||REP_CAT;
+  const hayFiltros=REP_YEAR||REP_MES||REP_AREA||REP_CAT||REP_AREAS_SEL.length;
+
+  // Pills de año
+  const repYearBtns=`<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:14px">
+    <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-right:4px">Año:</span>
+    <button onclick="repToggleYear('')" style="${!REP_YEAR?'background:var(--primary);color:#fff;border-color:var(--primary)':'background:var(--card);color:var(--muted);border-color:var(--border)'};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border-style:solid;border-width:1.5px;transition:all .15s">Todos</button>
+    ${years.map(y=>`<button onclick="repToggleYear('${y}')" style="${REP_YEAR===y?'background:var(--primary);color:#fff;border-color:var(--primary)':'background:var(--card);color:var(--muted);border-color:var(--border)'};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border-style:solid;border-width:1.5px;transition:all .15s">${y}</button>`).join('')}
+  </div>`;
+
+  // Pills de área (solo admin/gerencia)
+  const repAreaBtns=CU.role!=='responsable'?`<div style="margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Área:</div>
+    ${_areaBtns(REP_AREAS_SEL,'repToggleArea',areasAvail)}
+  </div>`:'';
 
   $('rContent').innerHTML=`
+    ${CU.role==='responsable'
+      ?sectionBanner('📈','Mis Reportes — '+CU.area,'Análisis de los gastos de tu área. Filtrá por período, categoría y visualizá la distribución mensual para hacer seguimiento de tu ejecución.')
+      :CU.role==='gerencia'
+        ?sectionBanner('📈','Reportes Ejecutivos','Análisis consolidado de todos los gastos. Filtrá por área, año, mes o categoría para obtener la vista que necesitás.')
+        :sectionBanner('📈','Reportes','Análisis detallado de gastos por período, área y categoría. Usá los filtros para explorar los datos.')}
     <!-- Filtros -->
+    ${repYearBtns}
+    ${repAreaBtns}
     <div class="fbar" style="margin-bottom:20px">
       <div class="fbar-label">Filtrar</div>
-      <select class="input" style="width:auto;min-width:115px" onchange="REP_YEAR=this.value;renderReportes()">
-        <option value="">Todos los años</option>
-        ${years.map(y=>`<option value="${y}"${REP_YEAR===y?' selected':''}>${y}</option>`).join('')}
-      </select>
       <select class="input" style="width:auto;min-width:140px" onchange="REP_MES=this.value;renderReportes()">
         <option value="">Todos los meses</option>
         ${MESES.map(m=>`<option value="${m.k}"${REP_MES===m.k?' selected':''}>${m.l}</option>`).join('')}
-      </select>
-      <select class="input" style="width:auto;min-width:130px" onchange="REP_AREA=this.value;renderReportes()">
-        <option value="">Todas las áreas</option>
-        ${areasAvail.map(a=>`<option value="${a}"${REP_AREA===a?' selected':''}>${a}</option>`).join('')}
       </select>
       <select class="input" style="width:auto;min-width:200px" onchange="REP_CAT=this.value;renderReportes()">
         <option value="">Todas las categorías</option>
         ${catsAvail.map(c=>`<option value="${c}"${REP_CAT===c?' selected':''}>${c}</option>`).join('')}
       </select>
-      ${hayFiltros?`<button class="btn btn-ghost btn-sm" onclick="REP_YEAR='';REP_MES='';REP_AREA='';REP_CAT='';renderReportes()">✕ Limpiar</button>`:''}
+      ${hayFiltros?`<button class="btn btn-ghost btn-sm" onclick="REP_YEAR='';REP_MES='';REP_AREA='';REP_CAT='';REP_AREAS_SEL=[];renderReportes()">✕ Limpiar</button>`:''}
     </div>
 
     <!-- KPI cards -->
@@ -2680,7 +3334,12 @@ function renderCharlie(){
   var qa=CF_QA[cfRole()]||CF_QA.responsable;
   var sug=qa.map(function(it,i){return '<button class="cf-sug" onclick="cfAsk('+i+')">'+it.q+'</button>';}).join('');
   var rolTxt=cfRole()==='responsable'?'tu asesor de presupuesto':cfRole()==='admin'?'tu copiloto administrativo':'tu copiloto de gestión';
-  $('chContent').innerHTML=''+
+  var charlieBanner=CU.role==='responsable'
+    ?sectionBanner('🤖','Charlie IA — Tu Asistente','Consultá dudas sobre tu presupuesto, pedí análisis de tus gastos o explorá las preguntas frecuentes de tu área.')
+    :CU.role==='gerencia'
+      ?sectionBanner('🤖','Charlie IA — Copiloto de Gestión','Analizá tendencias, comparativas por área y proyecciones. Charlie tiene acceso a todos los datos del sistema.')
+      :sectionBanner('🤖','Charlie IA — Copiloto Administrativo','Gestioná presupuestos, analizá gastos y obtené insights del sistema. Hacé preguntas en lenguaje natural.');
+  $('chContent').innerHTML=charlieBanner+''+
   '<style>.cf-wrap{display:grid;grid-template-columns:1fr 300px;gap:16px}@media(max-width:900px){.cf-wrap{grid-template-columns:1fr}}'+
   '.cf-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;display:flex;flex-direction:column;height:560px;overflow:hidden}'+
   '.cf-head{padding:14px 18px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px}'+
