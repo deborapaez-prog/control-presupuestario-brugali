@@ -1280,7 +1280,7 @@ function periodoTable(gFilt){
 
 // ── PRESUPUESTOS ──────────────────────────────────
 function renderPres(){
-  const canEdit=CU.role==='admin';
+  const canEdit=CU.role==='admin'||CU.role==='gerencia';
   const isAdmin=CU.role==='admin';
   const isLider=CU.role==='responsable';
   const isDir=CU.role==='gerencia';
@@ -1380,7 +1380,7 @@ function renderPres(){
     </div>`;
 
   // ── Sección solicitar presupuesto (Lider y Dirección) ────
-  const solicitarHTML=(isLider||isDir)?`
+  const solicitarHTML=isLider?`
     <div class="card" style="margin-top:18px;border-style:dashed;border-color:var(--primary,#7c3aed)">
       <div class="card-hd" style="background:var(--primary-light,#ede9fe)">
         <h3 style="color:var(--primary,#7c3aed)">Solicitar un presupuesto al administrador</h3>
