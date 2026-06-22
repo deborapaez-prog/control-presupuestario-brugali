@@ -1279,12 +1279,16 @@ function periodoTable(gFilt){
 }
 
 // ── PRESUPUESTOS ──────────────────────────────────
+var PRES_ANIO_SEL='todos';
 function renderPres(){
   const canEdit=CU.role==='admin'||CU.role==='gerencia';
   const isAdmin=CU.role==='admin';
   const isLider=CU.role==='responsable';
   const isDir=CU.role==='gerencia';
-  const PRES_VIEW=isAdmin?PRES:isDir?PRES:PRES.filter(p=>p.area===CU.area);
+  const PRES_BASE=isAdmin?PRES:isDir?PRES:PRES.filter(p=>p.area===CU.area);
+  const aniosDisp=['todos',...[...new Set(PRES_BASE.map(p=>String(p.anio||''))).values()].filter(Boolean).sort().reverse()];
+  if(!aniosDisp.includes(PRES_ANIO_SEL))PRES_ANIO_SEL='todos';
+  const PRES_VIEW=PRES_ANIO_SEL==='todos'?PRES_BASE:PRES_BASE.filter(p=>String(p.anio)===PRES_ANIO_SEL);
   const total=PRES_VIEW.reduce((s,p)=>s+p.monto,0);
 
   // ── Banner según rol ──────────────────────────────
@@ -1352,11 +1356,15 @@ function renderPres(){
     </div>`:'';
 
   // ── Tabla presupuestos ────────────────────────────
+  const anioOpts=aniosDisp.map(a=>`<option value="${a}"${a===PRES_ANIO_SEL?' selected':''}>${a==='todos'?'Todos los años':a}</option>`).join('');
   const presTable=`
     <div class="card">
       <div class="card-hd">
         <h3>Presupuestos Cargados <span class="badge bg-gray" style="margin-left:6px">${PRES_VIEW.length}</span></h3>
-        ${canEdit?`<button class="btn btn-primary btn-sm" onclick="openPModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nuevo</button>`:''}
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="input" style="padding:4px 8px;font-size:12px;height:30px;width:auto" onchange="PRES_ANIO_SEL=this.value;renderPres()">${anioOpts}</select>
+          ${canEdit?`<button class="btn btn-primary btn-sm" onclick="openPModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nuevo</button>`:''}
+        </div>
       </div>
       <div class="card-bd" style="padding:0">
         ${PRES_VIEW.length===0?`<div class="empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><p>No hay presupuestos cargados${isLider?' para tu área.':'.'}</p></div>`:`
